@@ -5,7 +5,7 @@
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
 <link rel="stylesheet" href="assets/style.css">
-<script src="assets/plotly.min.js" defer></script><script src="assets/app.js" defer></script>
+<script src="assets/plotly.min.js" defer></script><script src="assets/palette.js" defer></script><script src="assets/app.js" defer></script>
 </head><body>
 <nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
 <button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Pitcher Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods & Code</a></li></ul></div></nav>
@@ -19,46 +19,57 @@
     <a id="cardlink" class="btn" style="margin-left:auto" target="_blank">Printable pitcher card ↗</a>
   </div>
   <div class="tblwrap"><table class="tbl" id="ars"></table></div>
-  <p class="caption">Velo/Max in mph · Spin in rpm · IVB/HB in inches · Ext = extension (ft) · VAA = vertical approach angle (°) · Rel Δ = release-point offset from his primary fastball (inches, height / side) · Whiff = whiffs per swing · Chase = swing rate out of zone · CSW = called + swinging strikes per pitch · RV/100 = run value per 100 pitches, pitcher's view (+ is good) · Stuff+ = this project's shape-only model (100 = MLB average, see <a href="research.html#stuff">Research</a>).</p>
+  <p class="caption">Velo/Max in mph · Spin in rpm · IVB/HB in inches · Ext = extension (ft) · VAA = vertical approach angle (°) · Rel Δ = release-point offset from his primary fastball (inches, height / side) · Whiff = whiffs per swing, with its 95% Wilson interval · Chase = swing rate out of zone · CSW = called + swinging strikes per pitch · RV/100 = run value per 100 pitches, pitcher's view (+ is good) · Stuff+ = this project's shape-only model (100 = MLB average, see <a href="research.html#stuff">Research</a>).</p>
   <div class="grid g2" style="margin-top:22px">
-    <div><div id="mv" class="chart"></div><p class="caption">Movement profile: dots are pitches, rings are pitch-type averages. Read it like a pitch-design chart.</p></div>
+    <div><div id="mv" class="chart"></div><p class="caption">Movement profile: dots are pitches, rings are pitch-type averages labeled with average velocity. The gold callout marks his best pitch by Stuff+.</p></div>
     <div><div id="rel" class="chart"></div><p class="caption">Release points (catcher's view, mirrored so arm side is +). If pitch types separate here, hitters may be able to pick them up early.</p></div>
   </div>
   <div class="controls" style="margin-top:26px"><div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Location: pitch type</div><div class="pill" id="ptpick"></div></div>
     <div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Show</div><div class="pill" id="metric"><button data-m="n" class="on">Frequency</button><button data-m="w">Whiff / swing</button></div></div>
     <div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Batter side</div><div class="pill" id="side"><button data-s="all" class="on">All</button><button data-s="L">vs LHH</button><button data-s="R">vs RHH</button></div></div></div>
   <div class="grid g2">
-    <div><div id="heat" class="chart tall"></div><p class="caption">Catcher's view. Height is scaled to each hitter's strike zone (0 = bottom, 1 = top). Whiff map shows only cells with 4+ swings.</p></div>
+    <div><div id="heat" class="chart tall"></div><p class="caption">Catcher's view. Height is scaled to each hitter's strike zone (0 = bottom, 1 = top). Whiff map shows only cells with 4+ swings; the callout appears only when both the zone and the area below it have 50+ swings.</p></div>
     <div><div id="cnt" class="chart tall"></div><p class="caption">Pitch mix in every count. Pitchers with stable usage are harder to sit on; big swings from count to count show what hitters can look for.</p></div>
   </div>
 </div></section>
 <script>
 let DATA=[], CUR=null, PT=null, MET='n', SIDE='all';
+function ci(k,n){ const [a,b]=wilson(k,n); return n? `<span class="muted" style="font-size:.78em"> ${Math.round(100*a)}–${Math.round(100*b)}</span>` : ''; }
 function arsTable(p){
-  const h=['Pitch','#','Usage','Velo','Max','Spin','IVB','HB','Ext','Arm°','VAA','Rel Δ','Whiff','Chase','CSW','xwOBAcon','RV/100','Stuff+'];
+  const h=['Pitch','#','Usage','Velo','Max','Spin','IVB','HB','Ext','Arm°','VAA','Rel Δ','Whiff (95% CI)','Chase','CSW','xwOBAcon','RV/100','Stuff+'];
   const rows=p.arsenal.map(a=>`<tr><td><span style="color:${PAL[a.pitch_type]||'#ccc'}">●</span> ${a.pitch_name||NAMES[a.pitch_type]} <span class="muted">${a.pitch_type}</span></td>
    <td>${a.n}</td><td>${pct(a.usage)}</td><td>${fmt(a.velo)}</td><td>${fmt(a.velo_max)}</td><td>${fmt(a.spin,0)}</td><td>${fmt(a.ivb)}</td><td>${fmt(a.hb_arm)}</td>
    <td>${fmt(a.extension)}</td><td>${fmt(a.arm_angle,0)}</td><td>${fmt(a.vaa)}</td><td>${sgn(a.rel_dz_in)} / ${sgn(a.rel_dx_in)}</td>
-   <td>${pct(a.whiff_rate)}</td><td>${pct(a.chase_rate)}</td><td>${pct(a.csw_rate)}</td><td>${a.xwoba_con==null?'–':fmt(a.xwoba_con,3).replace(/^0/,'')}</td>
+   <td>${pct(a.whiff_rate)}${ci(Math.round(a.whiff_rate*a.swings),a.swings)}</td><td>${pct(a.chase_rate)}</td><td>${pct(a.csw_rate)}</td><td>${a.xwoba_con==null?'–':fmt(a.xwoba_con,3).replace(/^0/,'')}</td>
    <td style="color:${a.rv100>0?'var(--good)':a.rv100<0?'var(--bad)':'inherit'}">${sgn(a.rv100,2)}</td>
    <td><span class="sp" style="background:${stuffColor(a.stuff_plus)}">${a.stuff_plus??'–'}</span></td></tr>`).join('');
   document.getElementById('ars').innerHTML=`<thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows}</tbody>`;
 }
+function bestPitch(p){ return [...p.arsenal].filter(a=>a.n>=50&&a.stuff_plus!=null).sort((a,b)=>b.stuff_plus-a.stuff_plus)[0]||p.arsenal[0]; }
 function movement(p){
   const types=p.arsenal.map(a=>a.pitch_type);
   const tr=types.map(t=>{const s=p.pitches.filter(x=>x.pitch_type===t);
     return {x:s.map(x=>x.hb),y:s.map(x=>x.ivb),text:s.map(x=>`${t} ${x.v} mph`),mode:'markers',type:'scatter',name:t,
-      marker:{color:PAL[t],size:6,opacity:.55},hovertemplate:'%{text}<br>HB %{x}" · IVB %{y}"<extra></extra>'};});
-  tr.push({x:p.arsenal.map(a=>a.hb_arm),y:p.arsenal.map(a=>a.ivb),mode:'markers+text',type:'scatter',name:'avg',showlegend:false,
-    text:types,textposition:'top center',textfont:{color:'#E8EEF4',size:11},marker:{size:16,color:'rgba(0,0,0,0)',line:{color:types.map(t=>PAL[t]),width:3}},hoverinfo:'skip'});
-  Plotly.react('mv',tr,LAYOUT({title:{text:'Movement (inches)',font:{size:14}},xaxis:{title:'Horizontal break · arm side →',range:[-25,25],gridcolor:'#1f3d66',zerolinecolor:'#4d6d96'},
-    yaxis:{title:'Induced vertical break',range:[-25,25],scaleanchor:'x',gridcolor:'#1f3d66',zerolinecolor:'#4d6d96'}}),CFG);
+      marker:{color:PAL[t],size:6,opacity:.5},hovertemplate:'%{text}<br>HB %{x}" · IVB %{y}"<extra></extra>'};});
+  tr.push({x:p.arsenal.map(a=>a.hb_arm),y:p.arsenal.map(a=>a.ivb),mode:'markers+text',type:'scatter',
+    text:p.arsenal.map(a=>`<b>${a.pitch_type}</b> ${fmt(a.velo,0)}`),textposition:'top center',textfont:{color:'#E8EEF4',size:12},
+    marker:{size:16,color:'rgba(0,0,0,0)',line:{color:types.map(t=>PAL[t]),width:3}},hoverinfo:'skip'});
+  const b=bestPitch(p);
+  Plotly.react('mv',tr,LAYOUT({title:{text:'Movement (inches) · labels = pitch type + mph',font:{size:14}},margin:{l:56,r:16,t:40,b:56},
+    xaxis:{title:'Horizontal break · arm side →',range:[-25,25],gridcolor:'#1f3d66',zerolinecolor:'#4d6d96'},
+    yaxis:{title:'Induced vertical break',range:[-25,25],scaleanchor:'x',gridcolor:'#1f3d66',zerolinecolor:'#4d6d96'},
+    annotations:[callout(b.hb_arm,b.ivb,`His best shape is the ${b.pitch_type} at ${b.stuff_plus} Stuff+, thrown ${pct(b.usage)} of the time.`,{ax:b.hb_arm>0?-70:70,ay:b.ivb>0?55:-55})]}),CFG);
 }
 function release(p){
   const types=p.arsenal.map(a=>a.pitch_type);
   const tr=types.map(t=>{const s=p.pitches.filter(x=>x.pitch_type===t);
-    return {x:s.map(x=>x.rx),y:s.map(x=>x.rz),mode:'markers',type:'scatter',name:t,marker:{color:PAL[t],size:5,opacity:.55},hovertemplate:t+' side %{x} ft · height %{y} ft<extra></extra>'};});
-  Plotly.react('rel',tr,LAYOUT({title:{text:'Release point (ft)',font:{size:14}},xaxis:{title:'Release side · arm side →',gridcolor:'#1f3d66'},yaxis:{title:'Release height',scaleanchor:'x',gridcolor:'#1f3d66'}}),CFG);
+    return {x:s.map(x=>x.rx),y:s.map(x=>x.rz),mode:'markers',type:'scatter',name:t,marker:{color:PAL[t],size:5,opacity:.5},hovertemplate:t+' side %{x} ft · height %{y} ft<extra></extra>'};});
+  tr.push({x:p.arsenal.map(a=>a.rel_side),y:p.arsenal.map(a=>a.rel_height),mode:'text',type:'scatter',text:types.map(t=>`<b>${t}</b>`),
+    textfont:{color:types.map(t=>PAL[t]),size:13},hoverinfo:'skip'});
+  const off=[...p.arsenal].filter(a=>a.n>=50).map(a=>({a,d:Math.hypot(a.rel_dz_in||0,a.rel_dx_in||0)})).sort((x,y)=>y.d-x.d)[0];
+  const ann = off && off.d>0 ? [callout(off.a.rel_side,off.a.rel_height,`The ${off.a.pitch_type} leaves his hand ${fmt(off.d)} in from his fastball slot, the widest gap here.`,{ax:-90,ay:-50})] : [];
+  Plotly.react('rel',tr,LAYOUT({title:{text:'Release point (ft) · labels = pitch-type averages',font:{size:14}},margin:{l:56,r:16,t:40,b:56},
+    xaxis:{title:'Release side · arm side →',gridcolor:'#1f3d66'},yaxis:{title:'Release height',scaleanchor:'x',gridcolor:'#1f3d66'},annotations:ann}),CFG);
 }
 function heat(p){
   const xs=[],zs=[]; for(let x=-1.875;x<=1.88;x+=.25) xs.push(+x.toFixed(3)); for(let z=-0.6875;z<=1.69;z+=.125) zs.push(+z.toFixed(4));
@@ -66,28 +77,42 @@ function heat(p){
   p.heat.filter(h=>h.pitch_type===PT && (SIDE==='all'||h.stand===SIDE)).forEach(h=>{
     const i=zs.findIndex(z=>Math.abs(z-h.z_bin)<1e-3), j=xs.findIndex(x=>Math.abs(x-h.x_bin)<1e-3);
     if(i>=0&&j>=0){N[i][j]+=h.n;S[i][j]+=h.swings;W[i][j]+=h.whiffs;}});
-  let Z, title, cs;
-  if(MET==='n'){ // light smoothing for readability (3x3 box)
-    Z=N.map((r,i)=>r.map((_,j)=>{let s=0,c=0;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const v=N[i+a]?.[j+b];if(v!=null){s+=v*(a==0&&b==0?2:1);c+=(a==0&&b==0?2:1);}}return s/c;}));
-    title=`${PT} location frequency`; cs=[[0,'rgba(11,31,58,0)'],[.15,'#16365f'],[.5,'#4f86c6'],[.8,'#7AB2DD'],[1,'#E8EEF4']];
-  } else { Z=W.map((r,i)=>r.map((w,j)=>S[i][j]>=4? w/S[i][j] : null)); title=`${PT} whiff per swing`; cs=[[0,'#16365f'],[.5,'#7AB2DD'],[1,'#C9A227']]; }
   const total=N.flat().reduce((a,b)=>a+b,0);
+  let inZ=0, below=0; zs.forEach((z,i)=>xs.forEach((x,j)=>{ if(Math.abs(x)<=0.83&&z>=0&&z<=1) inZ+=N[i][j]; if(z<0) below+=N[i][j]; }));
+  let Z, title, cs, ann=[];
+  if(MET==='n'){
+    Z=N.map((r,i)=>r.map((_,j)=>{let s=0,c=0;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const v=N[i+a]?.[j+b];if(v!=null){s+=v*(a==0&&b==0?2:1);c+=(a==0&&b==0?2:1);}}return s/c;}));
+    title=`${PT} location frequency · n = ${nFmt(total)}`; cs=[[0,'rgba(11,31,58,0)'],[.15,'#16365f'],[.5,'#4f86c6'],[.8,'#7AB2DD'],[1,'#E8EEF4']];
+    if(total) ann=[callout(1.35,-0.45,`${pct(inZ/total)} of these pitches land in the zone and ${pct(below/total)} below it.`,{ax:0,ay:0,extra:{showarrow:false}})];
+  } else {
+    Z=W.map((r,i)=>r.map((w,j)=>S[i][j]>=4? w/S[i][j] : null)); title=`${PT} whiff per swing · ${nFmt(S.flat().reduce((a,b)=>a+b,0))} swings`; cs=[[0,'#16365f'],[.5,'#7AB2DD'],[1,GOLD]];
+    // callout only when both regions clear the 50-swing minimum (design_v2 n-rule)
+    let iw=0,is=0,bw=0,bs=0; zs.forEach((z,i)=>xs.forEach((x,j)=>{ const inz=Math.abs(x)<=0.83&&z>=0&&z<=1; if(inz){iw+=W[i][j];is+=S[i][j];} else if(z<0){bw+=W[i][j];bs+=S[i][j];} }));
+    if(is>=MIN_SWINGS&&bs>=MIN_SWINGS) ann=[callout(0,0,`Below the zone the ${PT} gets ${pct(bw/bs)} whiffs per swing vs ${pct(iw/is)} in it.`)];
+  }
   Plotly.react('heat',[{z:Z,x:xs,y:zs,type:'heatmap',colorscale:cs,zsmooth:MET==='n'?'best':false,showscale:MET!=='n',
      colorbar:{tickformat:'.0%',thickness:10,len:.6}, hovertemplate:MET==='n'?'x %{x} · z %{y}<extra></extra>':'whiff %{z:.0%}<extra></extra>', zmin:MET==='n'?undefined:0, zmax:MET==='n'?undefined:.6}],
-    LAYOUT({title:{text:`${title} · ${total} pitches`,font:{size:14}},
+    LAYOUT({title:{text:title,font:{size:14}},margin:{l:56,r:16,t:40,b:56},
       xaxis:{title:'Plate side (ft) · catcher view',range:[-2,2],gridcolor:'rgba(0,0,0,0)',zeroline:false},
       yaxis:{title:'Height in zone (0 = bottom, 1 = top)',range:[-0.75,1.75],gridcolor:'rgba(0,0,0,0)',zeroline:false},
-      shapes:[{type:'rect',x0:-0.83,x1:0.83,y0:0,y1:1,line:{color:'#C9A227',width:2}},
-              {type:'line',x0:-0.83,x1:0.83,y0:1/3,y1:1/3,line:{color:'rgba(201,162,39,.35)',width:1}},{type:'line',x0:-0.83,x1:0.83,y0:2/3,y1:2/3,line:{color:'rgba(201,162,39,.35)',width:1}},
-              {type:'line',x0:-0.277,x1:-0.277,y0:0,y1:1,line:{color:'rgba(201,162,39,.35)',width:1}},{type:'line',x0:0.277,x1:0.277,y0:0,y1:1,line:{color:'rgba(201,162,39,.35)',width:1}}]}),CFG);
+      annotations:ann,
+      shapes:[{type:'rect',x0:-0.83,x1:0.83,y0:0,y1:1,line:{color:'#E8EEF4',width:2}},
+              {type:'line',x0:-0.83,x1:0.83,y0:1/3,y1:1/3,line:{color:'rgba(232,238,244,.3)',width:1}},{type:'line',x0:-0.83,x1:0.83,y0:2/3,y1:2/3,line:{color:'rgba(232,238,244,.3)',width:1}},
+              {type:'line',x0:-0.277,x1:-0.277,y0:0,y1:1,line:{color:'rgba(232,238,244,.3)',width:1}},{type:'line',x0:0.277,x1:0.277,y0:0,y1:1,line:{color:'rgba(232,238,244,.3)',width:1}}]}),CFG);
 }
 function counts(p){
   const order=['0-0','1-0','2-0','3-0','0-1','1-1','2-1','3-1','0-2','1-2','2-2','3-2'];
   const types=p.arsenal.map(a=>a.pitch_type); const tot={}; p.counts.forEach(c=>{tot[c.count_state]=(tot[c.count_state]||0)+c.n;});
-  const tr=types.map(t=>({type:'bar',name:t,x:order,marker:{color:PAL[t]},
-    y:order.map(o=>{const r=p.counts.find(c=>c.count_state===o&&c.pitch_type===t);return r&&tot[o]?r.n/tot[o]:0;}),
+  const share=(o,t)=>{const r=p.counts.find(c=>c.count_state===o&&c.pitch_type===t);return r&&tot[o]?r.n/tot[o]:0;};
+  const tr=types.map(t=>({type:'bar',name:t,x:order,marker:{color:PAL[t]},y:order.map(o=>share(o,t)),
+    text:order.map(o=>share(o,t)>=0.12?t:''),textposition:'inside',insidetextanchor:'middle',textfont:{color:'#071428',size:10},
     customdata:order.map(o=>tot[o]||0),hovertemplate:t+' %{y:.0%} of %{customdata} pitches in %{x}<extra></extra>'}));
-  Plotly.react('cnt',tr,LAYOUT({barmode:'stack',title:{text:'Pitch mix by count',font:{size:14}},yaxis:{tickformat:'.0%',range:[0,1],gridcolor:'#1f3d66'},xaxis:{title:'Count (balls-strikes)',type:'category'}}),CFG);
+  // two-strike go-to pitch (0-2, 1-2, 2-2, 3-2 pooled)
+  const two=['0-2','1-2','2-2','3-2'], n2=two.reduce((a,o)=>a+(tot[o]||0),0);
+  const go=types.map(t=>({t,k:two.reduce((a,o)=>a+((p.counts.find(c=>c.count_state===o&&c.pitch_type===t)||{}).n||0),0)})).sort((a,b)=>b.k-a.k)[0];
+  const ann = n2 ? [callout('1-2',1.02,`With two strikes he throws the ${go.t} ${pct(go.k/n2)} of the time.`,{ax:0,ay:-26,extra:{yanchor:'bottom'}})] : [];
+  Plotly.react('cnt',tr,LAYOUT({barmode:'stack',title:{text:'Pitch mix by count · bars labeled by pitch type',font:{size:14}},margin:{l:56,r:16,t:56,b:56},
+    yaxis:{tickformat:'.0%',range:[0,1.12],gridcolor:'#1f3d66'},xaxis:{title:'Count (balls-strikes)',type:'category'},annotations:ann}),CFG);
 }
 function render(){
   const p=CUR; arsTable(p); movement(p); release(p); counts(p);

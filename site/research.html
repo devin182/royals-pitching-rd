@@ -5,7 +5,7 @@
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
 <link rel="stylesheet" href="assets/style.css">
-<script src="assets/plotly.min.js" defer></script><script src="assets/app.js" defer></script>
+<script src="assets/plotly.min.js" defer></script><script src="assets/palette.js" defer></script><script src="assets/app.js" defer></script>
 </head><body>
 <nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
 <button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Pitcher Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods & Code</a></li></ul></div></nav>
@@ -26,7 +26,7 @@
       <div class="tblwrap"><table class="tbl" id="valtbl"></table></div>
       <p class="caption">Holdout metrics per model. cor(whiff) = correlation between predicted quality and whiff on held-out swings.</p>
     </div>
-    <div><div id="valchart" class="chart"></div><p class="caption">Correlation with late-season run value per 100 pitches, same pitcher and pitch type (<span id="nval"></span> pitch types with 100+ pitches in both windows).</p></div>
+    <div><div id="valchart" class="chart"></div><p class="caption">Correlation (with 95% interval) with late-season run value per 100 pitches, same pitcher and pitch type (<span id="nval"></span> pitch types with 100+ pitches in both windows).</p></div>
   </div>
   <div class="grid g2" style="margin-top:22px">
     <div><div id="stuffscatter" class="chart tall"></div><p class="caption">Stuff+ vs whiff rate for every MLB pitcher-pitch type with 100+ pitches. Royals are highlighted. r = <span id="rwhiff"></span>.</p></div>
@@ -59,10 +59,13 @@
       <p>Through June he buried <b><span id="cam1b"></span></b> of his sliders below the zone. From July on it was <b><span id="cam2b"></span></b>. His slider whiff rate per swing went from <b>21.8%</b> to <b>42.2%</b> over that span, while the league slider rate stayed flat (33.6% to 33.1%). The shape didn't change. The target did.</p>
       <p class="muted">Monthly run value is noisy at about 50–100 sliders a month (see the chart). Whiff rate is the more stable signal here.</p>
     </div>
-    <div><div id="camreg" class="chart"></div><p class="caption">Cameron slider by location region: whiff per swing (bars) and expected run value per 100 pitches (diamonds, right axis). Labels show pitches.</p></div>
+    <div><div id="camreg" class="chart"></div><p class="caption">Cameron slider by location region: whiff per swing with 95% Wilson intervals (bars) and expected run value per 100 pitches (diamonds, right axis). Labels show pitches.</p></div>
   </div>
+  <h3 style="margin-top:26px">Before and after: where the slider went</h3>
+  <div class="grid g2"><div id="camh1" class="chart"></div><div id="camh2" class="chart"></div></div>
+  <p class="caption">Location frequency of Cameron's sliders, through June (left) vs July on (right), catcher's view, same color scale (share of that period's sliders per cell, lightly smoothed). Height is scaled to each hitter's zone.</p>
   <div id="cammonth" class="chart" style="margin-top:18px"></div>
-  <p class="caption">Cameron slider by month: share thrown below the zone vs whiff per swing.</p>
+  <p class="caption">Cameron slider by month: share thrown below the zone (bars, n labeled) vs whiff per swing (line, with 95% Wilson interval).</p>
 </div></section>
 
 <section id="tunnel" class="alt"><div class="wrap">
@@ -90,7 +93,7 @@
   <h2>6 · Fatigue: velocity by pitch count</h2>
   <p style="max-width:860px">For outings of 70+ pitches, each fastball (four-seam + sinker) is compared to that pitcher's average over his first 25 pitches of the same game, then binned by pitch count. Comparing each pitcher to his own baseline that day removes day-to-day and park differences in raw velocity.</p>
   <div id="fat" class="chart tall"></div>
-  <p class="caption">Dashed line = −1 mph, a common "check on him" threshold. Bins with fewer than 20 fastballs are hidden.</p>
+  <p class="caption">Dashed line = −1 mph, a common "check on him" threshold. Bars are ±1.96 standard errors. Bins with fewer than 20 fastballs are hidden.</p>
 </div></section>
 
 <section id="recs"><div class="wrap">

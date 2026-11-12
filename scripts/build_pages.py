@@ -1,6 +1,7 @@
 """Assemble static pages: site_src/<page>.html bodies + shared head/nav/footer -> site/<page>.html.
 Also copies the SQL / R source into site/code so the Methods page shows the real pipeline code."""
 
+import json
 import pathlib
 import shutil
 
@@ -21,7 +22,7 @@ HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
 <link rel="stylesheet" href="assets/style.css">
-<script src="assets/plotly.min.js" defer></script><script src="assets/app.js" defer></script>
+<script src="assets/plotly.min.js" defer></script><script src="assets/palette.js" defer></script><script src="assets/app.js" defer></script>
 </head><body>
 <nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
 <button class="burger" aria-label="Menu">☰</button><ul>{links}</ul></div></nav>
@@ -40,4 +41,9 @@ code.mkdir(exist_ok=True)
 for f in list((ROOT / "sql").glob("*.sql")) + list((ROOT / "R").glob("*.R")) + list((ROOT / "report").glob("*.Rmd")) + [ROOT / "Makefile"]:
     if f.exists():
         shutil.copy(f, code / (f.name + (".txt" if f.suffix in (".R", ".Rmd", "") else ".txt")))
+pal = json.loads((ROOT / "config" / "pitch_colors.json").read_text())
+pal = {k: v for k, v in pal.items() if not k.startswith("_")}
+(OUT / "assets" / "palette.js").write_text(
+    "// generated from config/pitch_colors.json by scripts/build_pages.py\nwindow.PITCH_COLORS = " + json.dumps(pal) + ";\n"
+)
 print("pages:", ", ".join(n for n, _ in PAGES))

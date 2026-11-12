@@ -6,7 +6,8 @@
   --mono:'JetBrains Mono',Menlo,Consolas,monospace; --r:14px; --max:1180px;
 }
 *{box-sizing:border-box} html{background:var(--bg);color:var(--text);font-family:var(--body);scroll-behavior:smooth}
-body{margin:0;line-height:1.6;font-size:16px}
+body{margin:0;line-height:1.6;font-size:16px;font-variant-numeric:tabular-nums}
+.js-plotly-plot text{font-variant-numeric:tabular-nums}
 a{color:var(--powder);text-decoration:none} a:hover{color:var(--tint);text-decoration:underline}
 h1,h2,h3,h4{font-family:var(--display);font-weight:600;letter-spacing:.01em;line-height:1.15;margin:0 0 .5em}
 h1{font-size:clamp(2rem,4.6vw,3.4rem)} h2{font-size:clamp(1.5rem,3vw,2.1rem)} h3{font-size:1.2rem}

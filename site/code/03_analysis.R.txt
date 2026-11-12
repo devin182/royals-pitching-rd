@@ -24,14 +24,15 @@ pit_vaa <- ff[, .(n = .N, vaa = mean(vaa), vaa_adj = mean(vaa_adj), rel_z = mean
                   high_n = sum(plate_z_norm >= 0.67),
                   high_share = mean(plate_z_norm >= 0.67),
                   high_whiff = sum(is_whiff & plate_z_norm >= 0.67) / pmax(1, sum(is_swing & plate_z_norm >= 0.67)),
-                  low_whiff  = sum(is_whiff & plate_z_norm < 0.33) / pmax(1, sum(is_swing & plate_z_norm < 0.33))),
+                  low_whiff  = sum(is_whiff & plate_z_norm < 0.33) / pmax(1, sum(is_swing & plate_z_norm < 0.33)),
+                  high_sw = sum(is_swing & plate_z_norm >= 0.67), low_sw = sum(is_swing & plate_z_norm < 0.33)),
               by = .(pitcher, player_name, is_royals)][n >= 200]
 # league evidence: high-zone FF whiff% by VAA-adj quintile
 ff[, vaa_q := cut(vaa_adj, quantile(vaa_adj, 0:5 / 5), include.lowest = TRUE, labels = paste0("Q", 1:5))]
 vaa_league <- ff[plate_z_norm >= 0.67, .(swings = sum(is_swing), whiff = sum(is_whiff) / sum(is_swing),
                                           vaa_adj_mid = median(vaa_adj)), by = vaa_q][order(vaa_q)]
-vaa_league_low <- ff[plate_z_norm < 0.33, .(whiff = sum(is_whiff) / sum(is_swing)), by = vaa_q][order(vaa_q)]
-vaa_league[, low_whiff := vaa_league_low$whiff]
+vaa_league_low <- ff[plate_z_norm < 0.33, .(whiff = sum(is_whiff) / sum(is_swing), swings = sum(is_swing)), by = vaa_q][order(vaa_q)]
+vaa_league[, `:=`(low_whiff = vaa_league_low$whiff, low_swings = vaa_league_low$swings)]
 wj(list(coef = coef(vaa_fit), r2 = summary(vaa_fit)$r.squared, league_quintiles = vaa_league,
         pitchers = pit_vaa), "vaa.json")
 
@@ -59,7 +60,8 @@ tun_bins <- q("WITH s AS (
        lag(p.pitch_group) OVER w AS prev_group, p.pitch_group
      FROM pitch_features p WINDOW w AS (PARTITION BY game_pk, at_bat_number ORDER BY pitch_number))
    SELECT least(floor(tun / 2) * 2, 20) AS tunnel_bin, count(*) n,
-          avg(is_whiff::INT) FILTER (WHERE is_swing) whiff, avg(is_chase::INT) FILTER (WHERE NOT in_zone) chase
+          avg(is_whiff::INT) FILTER (WHERE is_swing) whiff, avg(is_chase::INT) FILTER (WHERE NOT in_zone) chase,
+          count(*) FILTER (WHERE is_swing) swings, count(*) FILTER (WHERE NOT in_zone) oz
    FROM s WHERE prev_group = 'Fastball' AND pitch_group = 'Breaking' AND tun IS NOT NULL
    GROUP BY 1 ORDER BY 1")
 roy_pairs <- q("SELECT s.pitcher, a.player_name, prev_type, s.pitch_type, n, whiff_rate, chase_rate, tunnel_in, plate_in,
@@ -94,7 +96,7 @@ fat <- q("WITH g AS (
      FROM pitch_features WHERE is_royals),
    base AS (SELECT pitcher, game_pk, avg(release_speed) b FROM g WHERE pc <= 25 AND pitch_type IN ('FF','SI') GROUP BY ALL)
    SELECT g.pitcher, any_value(player_name) player_name, least(floor((pc - 1) / 15) * 15 + 1, 106) AS pc_bin,
-          count(*) n, avg(release_speed - b) velo_delta
+          count(*) n, avg(release_speed - b) velo_delta, stddev_samp(release_speed - b) velo_sd
    FROM g JOIN base USING (pitcher, game_pk)
    WHERE game_n >= 70 AND pitch_type IN ('FF','SI') GROUP BY ALL HAVING count(*) >= 20 ORDER BY 1, 3")
 wj(fat, "fatigue.json")
@@ -102,7 +104,8 @@ wj(fat, "fatigue.json")
 # ---------- 6. Explorer payload: per-pitcher arsenal + samples ---------------------------
 ars <- q("SELECT * FROM arsenal")
 ars <- merge(ars, stuff[, .(pitcher, pitch_type, stuff_plus)], by = c("pitcher", "pitch_type"), all.x = TRUE)
-vaa_pt <- q("SELECT pitcher, pitch_type, avg(vaa) vaa FROM pitch_features WHERE is_royals GROUP BY ALL")
+vaa_pt <- q("SELECT pitcher, pitch_type, avg(vaa) vaa, count(*) FILTER (WHERE is_swing) swings,
+                    count(*) FILTER (WHERE NOT in_zone) oz FROM pitch_features WHERE is_royals GROUP BY ALL")
 ars <- merge(ars, vaa_pt, by = c("pitcher", "pitch_type"), all.x = TRUE)
 # release offset of each pitch vs that pitcher's primary fastball (inches)
 fbref <- q("SELECT pitcher, avg(release_pos_z) fz, avg(rel_side_arm) fx FROM pitch_features p
@@ -142,23 +145,32 @@ plat <- q(sprintf("WITH lg AS (SELECT pitch_type, stand, avg(xrv) l FROM pitch_f
   SELECT f.pitcher, any_value(player_name) player_name, f.pitch_type, f.stand, count(*) n,
          100 * avg(xrv) xrv100, 100 * (sum(xrv) + %d * any_value(l)) / (count(*) + %d) xrv100_shrunk,
          avg(is_whiff::INT) FILTER (WHERE is_swing) whiff, count(*) FILTER (WHERE is_swing) swings,
-         avg(xwoba_con) FILTER (WHERE type = 'X') xwoba_con, count(*) FILTER (WHERE type = 'X') bip
+         avg(xwoba_con) FILTER (WHERE type = 'X') xwoba_con, count(*) FILTER (WHERE type = 'X') bip, 100 * stddev_samp(xrv) sd100
   FROM pitch_features f JOIN lg USING (pitch_type, stand) WHERE is_royals GROUP BY ALL HAVING count(*) >= 30", K_PL, K_PL))
 monthly <- q("SELECT pitcher, any_value(player_name) player_name, pitch_type, date_trunc('month', game_date) AS month, count(*) n,
          avg((plate_z_norm < 0)::INT) below_share, avg((in_zone AND plate_z_norm BETWEEN 0.33 AND 0.67)::INT) middle_share,
          avg((plate_z_norm >= 0.67)::INT) high_share,
-         100 * avg(xrv) xrv100, avg(is_whiff::INT) FILTER (WHERE is_swing) whiff
+         100 * avg(xrv) xrv100, avg(is_whiff::INT) FILTER (WHERE is_swing) whiff, count(*) FILTER (WHERE is_swing) swings
   FROM pitch_features WHERE is_royals GROUP BY ALL HAVING count(*) >= 15 ORDER BY 1, 3, 4")
 halves <- q("SELECT pitcher, pitch_type, game_date >= DATE '2026-07-01' AS second_half, count(*) n,
          avg((plate_z_norm < 0)::INT) below_share, avg((in_zone AND plate_z_norm BETWEEN 0.33 AND 0.67)::INT) middle_share,
-         100 * avg(xrv) xrv100 FROM pitch_features WHERE is_royals GROUP BY ALL")
+         100 * avg(xrv) xrv100, count(*) FILTER (WHERE is_swing) swings, count(*) FILTER (WHERE is_whiff) whiffs
+  FROM pitch_features WHERE is_royals GROUP BY ALL")
 regions_r <- q("SELECT pitcher, any_value(player_name) player_name, pitch_type, region, count(*) n, avg(is_swing::INT) swing_rate,
          avg(is_whiff::INT) FILTER (WHERE is_swing) whiff, count(*) FILTER (WHERE is_swing) swings, 100 * avg(xrv) xrv100
   FROM (SELECT *, CASE WHEN in_zone AND plate_z_norm >= 0.67 THEN 'Zone-High' WHEN in_zone AND plate_z_norm < 0.33 THEN 'Zone-Low'
                        WHEN in_zone THEN 'Zone-Middle' WHEN plate_z_norm > 1 THEN 'Chase-Above' WHEN plate_z_norm < 0 THEN 'Chase-Below'
                        ELSE 'Chase-Side' END region FROM pitch_features WHERE is_royals) GROUP BY ALL")
+half_grid <- function(name, pt) q(sprintf("
+  SELECT game_date >= DATE '2026-07-01' AS second_half,
+         floor(plate_x / 0.25) * 0.25 + 0.125 AS x_bin, floor(plate_z_norm / 0.125) * 0.125 + 0.0625 AS z_bin,
+         count(*) n, count(*) FILTER (WHERE is_swing) swings, count(*) FILTER (WHERE is_whiff) whiffs
+  FROM pitch_features WHERE is_royals AND player_name = '%s' AND pitch_type = '%s'
+    AND plate_x BETWEEN -2 AND 2 AND plate_z_norm BETWEEN -0.75 AND 1.75 GROUP BY ALL", name, pt))
+cam_grid <- half_grid("Cameron, Noah", "SL")
 leader <- stuff[is_royals == TRUE & n >= 100][order(-stuff_plus)]
-wj(list(platoon = plat, monthly = monthly, halves = halves, regions = regions_r, k_platoon = K_PL, k_counts = K_RV,
+wj(list(platoon = plat, monthly = monthly, halves = halves, regions = regions_r, cameron_sl_grid = cam_grid,
+        k_platoon = K_PL, k_counts = K_RV,
         stuff_leader = leader[, .(pitcher, player_name, pitch_type, n, stuff_plus, rv100, xrv100)]), "cases.json")
 dbDisconnect(con, shutdown = TRUE)
 message("exported: ", paste(list.files(out), collapse = ", "))
