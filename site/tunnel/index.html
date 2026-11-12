@@ -6,7 +6,7 @@
   <title>Pitch tunnel viewer · Devin Jenkinson · Pitching R&amp;D</title>
   <meta name="description" content="3D catcher's-eye view of average 2026 Royals pitch trajectories, with y-matched separation at the 23.8 ft commit point and at the plate.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=73eddb6a27">
+  <link rel="stylesheet" href="style.css?v=1e4a3c15b8">
   <style>
     .site-links{display:flex;gap:4px;margin-left:auto;overflow-x:auto;scrollbar-width:none;list-style:none;padding:0;margin-top:0;margin-bottom:0}
     .site-links a{display:block;white-space:nowrap;color:#9AA3B5;text-decoration:none;font-size:14px;padding:6px 10px;border-radius:6px}
@@ -15,6 +15,7 @@
     .bias-note{border-left:2.5pt solid #C9A227;padding-left:8px}
     @media (max-width:760px){.nav-inner{flex-wrap:wrap;height:auto;padding:8px 14px}.site-links{margin-left:0;width:100%}}
   </style>
+  <script src="../assets/palette.js?v=b812f039e0"></script>
   <script type="importmap">
   {
     "imports": {
@@ -28,7 +29,7 @@
   <header class="nav"><!--site-nav--><div class="nav-inner"><a class="brand" href="../index.html">Devin Jenkinson <span>· Pitching R&amp;D</span></a><ul class="site-links"><li><a href="../index.html">Home</a></li><li><a href="../explorer.html">Pitcher Explorer</a></li><li><a href="../research.html">Research</a></li><li><a href="../tunnel/index.html" class=on>Tunnel Viewer</a></li><li><a href="../gameplan.html">Game Plan</a></li><li><a href="../reports.html">Reports</a></li><li><a href="../methods.html">Methods & Code</a></li></ul></div><!--/site-nav--></header>
   <main>
     <h1>Pitch tunnel viewer</h1>
-    <p class="lead">Compare any two pitch types for a 2026 Royals pitcher. Paths are the average Statcast trajectory of each type. The gold plane is the commit point, 23.8 ft in front of the plate.</p>
+    <p class="lead">Compare any two pitch types for a 2026 Royals pitcher. Paths are the average Statcast trajectory of each type. The gold frame and rings mark the commit point, 23.8 ft in front of the plate (about 167 ms before it arrives). Drag to orbit; pick a camera preset to fly back.</p>
 
     <div class="toolbar">
       <label class="ctl grow">Pitcher
@@ -40,8 +41,12 @@
       <label class="ctl grow"><span><i class="swatch b"></i>Pitch B</span>
         <select id="pitchB"></select>
       </label>
-      <div class="btns">
-        <button type="button" id="orbitBtn" aria-pressed="false">Orbit view</button>
+      <div class="btns" role="group" aria-label="Camera">
+        <button type="button" class="cam on" data-view="catcher">Catcher</button>
+        <button type="button" class="cam" data-view="batterR">Batter (RH)</button>
+        <button type="button" class="cam" data-view="batterL">Batter (LH)</button>
+        <button type="button" class="cam" data-view="side">Side</button>
+        <button type="button" class="cam" data-view="overhead">Overhead</button>
       </div>
     </div>
 
@@ -64,10 +69,21 @@
           <canvas id="cTop"></canvas>
         </div>
       </div>
+      <div class="hud" id="hud" aria-live="off">
+        <div class="hud-row"><i class="dot" id="hudDotA"></i><span class="hud-name" id="hudNameA">—</span><b class="hud-v" id="hudVeloA">—</b></div>
+        <div class="hud-row"><i class="dot" id="hudDotB"></i><span class="hud-name" id="hudNameB">—</span><b class="hud-v" id="hudVeloB">—</b></div>
+        <div class="hud-gap"><span>Gap, same distance from plate</span><b id="hudGap">—</b></div>
+        <div class="hud-meta" id="hudMeta">—</div>
+        <div class="hud-commit" id="hudCommit">Commit point · 23.8 ft · ~167 ms before the plate</div>
+      </div>
       <div class="transport">
-        <button type="button" id="playBtn" class="primary">Play</button>
+        <button type="button" id="playBtn" class="primary" aria-label="Play">Play</button>
         <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Flight progress">
-        <span class="badge" id="clock">0.00 s · 8× slow motion</span>
+        <div class="speeds" role="group" aria-label="Playback speed">
+          <button type="button" class="spd on" data-speed="0.25">0.25×</button><button type="button" class="spd" data-speed="0.5">0.5×</button><button type="button" class="spd" data-speed="1">1×</button>
+        </div>
+        <label class="paths"><input type="checkbox" id="showPaths"> Full paths</label>
+        <span class="badge" id="clock">0.000 s</span>
       </div>
     </div>
 
@@ -79,7 +95,7 @@
       then solved back to release (<span class="mono">y = 60.5</span> ft minus extension) and forward to the front of the plate
       (<span class="mono">y = 17/12</span> ft). <strong>Separation is y-matched</strong> — the distance in the x–z plane
       at the same distance from the plate — at the commit point (23.8 ft in front of the plate, about when a hitter has to decide)
-      and again at the plate, in inches. Playback is time-synchronized at release, in 8× slow motion; the faster pitch reaches the plate first.
+      and again at the plate, in inches. Playback is time-synchronized at release (0.25×, 0.5× or real time); the faster pitch reaches the plate first. Balls are drawn to scale (2.9 in) with a ring in the pitch-type colour so a distant ball stays easy to find; the comet tail shows the last 75 ms of flight, and <em>Full paths</em> draws each whole trajectory as a thin line. The HUD gap is the distance between the two pitches at the same distance from the plate.
       Data: Baseball Savant Statcast via this repo's DuckDB. No club marks are used.
     </p>
   </main>
@@ -88,6 +104,6 @@
     Team abbreviations and player names are used only to describe public data.
     Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (2026 regular season). Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> (<a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a>
   </footer>
-  <script type="module" src="app.js?v=e30684dc0e"></script>
+  <script type="module" src="app.js?v=907fc469da"></script>
 </body>
 </html>
