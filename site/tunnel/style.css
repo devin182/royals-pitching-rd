@@ -130,3 +130,13 @@ footer{flex:none;padding:6px 20px 14px;color:var(--muted);font-size:.75rem;max-w
 .zoom #zoomLvl{font-family:var(--mono);font-size:.7rem;color:var(--muted);min-height:28px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .zoom button:hover{background:rgba(122,178,221,.15)}
 .transport .nts{color:var(--gold);font-size:.68rem}
+/* phones: taller stage and a compact HUD so the ball is never hidden behind overlays */
+@media (max-width:640px){
+  #stage{min-height:440px}
+  .hud{min-width:0;max-width:56%;padding:6px 8px;left:8px;top:8px}
+  .hud-row{font-size:.72rem}
+  .hud-gap span,.hud-meta,.hud-commit{display:none}
+  .zoom{right:8px;top:8px}
+  .zoom button{min-width:40px;min-height:38px}
+  .transport{flex-wrap:wrap;gap:6px 8px}
+}
