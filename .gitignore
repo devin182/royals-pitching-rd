@@ -15,4 +15,4 @@ report/out/
 __pycache__/
 .DS_Store
 !tests/fixtures/*.csv
-video/
+/video/
