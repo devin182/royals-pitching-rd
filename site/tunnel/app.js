@@ -1,4 +1,4 @@
-// Pitch tunnel viewer v2: broadcast-style 3D view of average 2026 Royals pitch paths.
+// Pitch tunnel viewer v2: broadcast-style 3D view of average 2026 pitch paths, one data file per team (teams/<TEAM>.json).
 // Statcast coordinates (ft): x = catcher's right (+ = 1B side), y = distance from the back tip of home plate, z = height.
 const BG = 0x071428;
 const MUTED = "#9AA3B5";
@@ -755,17 +755,51 @@ function bind() {
   window.addEventListener("resize", () => { if (!state.webgl) drawFallback(); });
 }
 
+const TUNNEL_V = "4de89a2bcb";  // content hash of teams/, written by scripts/build_pages.py
+const teamOk = (t) => /^[A-Z]{2,3}$/.test(t || "");
+function startTeam() {
+  let t = (q.get("team") || "").toUpperCase();
+  if (!teamOk(t)) { try { t = localStorage.getItem("team"); } catch (e) { t = null; } }
+  return teamOk(t) ? t : "KC";
+}
+async function loadTeam(team) {
+  const res = await fetch(`teams/${team}.json?v=${TUNNEL_V}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+async function fillTeams(cur) {
+  try {
+    const t = await (await fetch(`../data/teams.json?v=${TUNNEL_V}`)).json();
+    $("team").innerHTML = t.teams.map((x) => `<option value="${x.team}">${x.team} · ${x.name}</option>`).join("");
+    $("team").value = cur;
+    const dot = () => { const x = t.teams.find((y) => y.team === $("team").value); $("teamDot").style.background = x ? x.color : ""; };
+    dot();
+    $("team").addEventListener("change", async (e) => {
+      const team = e.target.value;
+      try { localStorage.setItem("team", team); } catch (err) { /* private mode */ }
+      const u = new URL(location.href); u.searchParams.set("team", team); u.searchParams.delete("p"); history.replaceState(null, "", u);
+      dot();
+      try { state.data = await loadTeam(team); } catch (err) { return; }
+      fillPitcherSelect();
+      setPitcher(state.data.meta.default_pitcher);
+      if (three && state.showPaths) three.setPaths(true);
+      setProgress(0.55);
+    });
+  } catch (err) { $("team").closest("label").style.display = "none"; }
+}
+
 async function main() {
   bind();
-  let data;
+  let data, team = startTeam();
   try {
-    const res = await fetch("tunnel.json?v=fbecce1532");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    data = await res.json();
+    data = await loadTeam(team);
   } catch (err) {
-    $("stage").innerHTML = `<p class="err">Could not load tunnel.json (${err.message}).</p>`;
-    return;
+    try { team = "KC"; data = await loadTeam(team); } catch (err2) {
+      $("stage").innerHTML = `<p class="err">Could not load the tunnel data (${err2.message}).</p>`;
+      return;
+    }
   }
+  fillTeams(team);
   state.data = data;
   fillPitcherSelect();
   state.webgl = hasWebGL();

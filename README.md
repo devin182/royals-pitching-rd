@@ -4,12 +4,16 @@
 
 **Live site: https://devin182.github.io/royals-pitching-rd/**
 
-An end-to-end pitching analytics project built on public Statcast data for the 2026 Kansas City Royals staff, by Devin Jenkinson
-([devin.jenkinson182@gmail.com](mailto:devin.jenkinson182@gmail.com)). It covers a SQL pipeline in DuckDB, a Stuff+ model and analysis in R,
+Season-long pitching coverage of the 2026 MLB regular season (Mar 25 – Sep 27) from public Statcast data, for all 30 staffs with the
+Kansas City Royals as the featured study, by Devin Jenkinson ([devin.jenkinson182@gmail.com](mailto:devin.jenkinson182@gmail.com)). It covers a SQL pipeline in DuckDB, a Stuff+ model and analysis in R,
 interactive HTML/CSS/JS reports, and a reproducible daily pitching report printed to one-page PDFs.
 
 ## What's on the site
-- **Pitcher Explorer**: arsenal table (velocity, spin, IVB/HB, extension, arm angle, VAA, release offsets, whiff/chase/CSW, run value, Stuff+), movement, release points, location heatmaps (frequency or whiff, by batter side) and pitch mix by count for every Royals pitcher with 300+ pitches.
+Most pages have a **team selector** (all 30 clubs; Royals by default). The choice is kept in the URL (`?team=NYY`) and in
+localStorage, and each team's data is a separate lazy-loaded file (`site/data/t/<TEAM>/`, built by `R/07_teams.R`). A pitcher is
+listed under a club with 300+ pitches for that club, using only those pitches, so a traded pitcher can appear under two teams.
+- **Season Tracker** (`site/season.html`): month-by-month staff whiff rate, CSW, chase, four-seam velocity, Stuff+ and pitch mix against the MLB average for the same month, plus velocity, Stuff+, whiff rate and usage by month for each pitcher (Mar–Apr through Sep, real game dates).
+- **Pitcher Explorer**: arsenal table (velocity, spin, IVB/HB, extension, arm angle, VAA, release offsets, whiff/chase/CSW, run value, Stuff+), movement, release points, location heatmaps (frequency or whiff, by batter side) and pitch mix by count for every pitcher with 300+ pitches for the selected club.
 - **Research**:
   1. Stuff+ (xgboost, physical traits only, temporal-holdout validation)
   2. Location-adjusted vertical approach angle
@@ -18,11 +22,12 @@ interactive HTML/CSS/JS reports, and a reproducible daily pitching report printe
   5. Count leverage with empirical-Bayes shrinkage
   6. Fatigue curves
   7. Four coach-facing recommendations
-- **Tunnel Viewer** (`site/tunnel/`): a Three.js broadcast-style view of average pitch paths with camera presets, playback speeds, a live gap HUD and a 2D fallback when WebGL is missing. Data built by `tunnel/build_tunnel.py`.
-- **Pitch Design Lab** (`site/lab.html`): sliders for velo, spin, movement, release and extension on a Royals pitch, re-graded live by the Stuff+ xgboost model running in the browser (trees exported by `R/05_design_lab.R`; `tests/js/lab.test.js` checks that JS matches R to within 1e-6 and runs in CI). Model estimates only. Slider positions outside the training data are flagged, and the nearest MLB comparables are shown.
-- **Sequencing** (`site/sequencing.html`): previous pitch (type, location, result) plus count → next-pitch CSW, whiff and xRV, league-wide, compared on held-out games with a no-sequence baseline (the lift is small and is reported as such). Includes two Royals leads with n, intervals and a multiple-testing caveat.
-- **Game Plan** (`gameplan/`): an xgboost matchup model and series game-plan generator for Royals starters vs the first 2027 opponents. Validation is reported honestly: hitter traits add little over pitcher and location features.
-- **Reports**: a daily pitching report (velocity and shape vs each pitcher's baseline, alert flags, workload, opponent attack / avoid / put-away sheet) and a one-page card for every pitcher, rendered from R Markdown with SQL chunks.
+  8. All 30 staffs ranked (whiff, CSW, chase, velocity, staff Stuff+, run value) with the selected club highlighted
+- **Tunnel Viewer** (`site/tunnel/`): a Three.js broadcast-style view of average pitch paths with camera presets, playback speeds, a live gap HUD and a 2D fallback when WebGL is missing. Data built by `tunnel/build_tunnel.py`, run for every club by `scripts/build_tunnel_teams.py` (`site/tunnel/teams/<TEAM>.json`).
+- **Pitch Design Lab** (`site/lab.html`): sliders for velo, spin, movement, release and extension on any pitcher's pitch (per-team index `site/data/lab/teams/<TEAM>.json`), re-graded live by the Stuff+ xgboost model running in the browser (trees exported by `R/05_design_lab.R`; `tests/js/lab.test.js` checks that JS matches R to within 1e-6 and that every team's baselines grade identically, and runs in CI). Model estimates only. Slider positions outside the training data are flagged, and the nearest MLB comparables are shown.
+- **Sequencing** (`site/sequencing.html`): previous pitch (type, location, result) plus count → next-pitch CSW, whiff and xRV, league-wide, compared on held-out games with a no-sequence baseline (the lift is small and is reported as such). The actual-rate line switches with the team selector (`site/data/seq/<TEAM>.json`). Includes two Royals leads with n, intervals and a multiple-testing caveat.
+- **Game Plan** (`gameplan/`): an xgboost matchup model and series game-plan generator for Royals starters vs the first 2027 opponents (Royals only; the page says so). Validation is reported honestly: hitter traits add little over pitcher and location features.
+- **Reports**: a daily pitching report (velocity and shape vs each pitcher's baseline, alert flags, workload, opponent attack / avoid / put-away sheet) and a one-page card for every Royals pitcher, rendered from R Markdown with SQL chunks. Cards for the other 29 clubs (`site/card.html`) are generated in the browser from the per-team JSON with the same rules, instead of rendering ~570 more HTML files.
 - **Methods & Code**: definitions plus the actual SQL and R source.
 
 ## Data
@@ -39,7 +44,8 @@ interactive HTML/CSS/JS reports, and a reproducible daily pitching report printe
 | Stuff+ | `R/02_stuff_model.R` | R · xgboost |
 | Analyses → JSON | `R/03_analysis.R` | R · DuckDB · data.table |
 | Design Lab export | `R/05_design_lab.R` → `site/data/lab/`, checked by `tests/js/lab.test.js` | R · xgboost tree dump · JS |
-| Sequencing | `R/06_sequencing.R` → `site/data/sequencing.json` | R · xgboost |
+| Sequencing | `R/06_sequencing.R` → `site/data/sequencing.json`, `site/data/seq/<TEAM>.json` | R · xgboost |
+| All 30 teams + Season Tracker | `R/07_teams.R` → `site/data/teams.json`, `site/data/t/<TEAM>/` (index, season, one file per pitcher); `scripts/build_tunnel_teams.py` → `site/tunnel/teams/`; checked by `tests/check_teams.py` | DuckDB SQL · R · Python |
 | Reports | `report/daily_report.Rmd`, `report/pitcher_card.Rmd`, `R/04_reports.R` | R Markdown + SQL chunks, ggplot2 |
 | PDFs | `scripts/print_pdf.sh` | headless Chrome |
 | Site | `site_src/*.html` + `scripts/build_pages.py` → `site/` | vanilla HTML/CSS/JS, Plotly |
@@ -48,7 +54,7 @@ interactive HTML/CSS/JS reports, and a reproducible daily pitching report printe
 Requirements: Python 3 with `duckdb`; R ≥ 4.3 with `DBI`, `duckdb`, `data.table`, `xgboost`, `jsonlite`, `rmarkdown`, `knitr`, `ggplot2` (and pandoc); Google Chrome; GNU make.
 ```bash
 git clone https://github.com/devin182/royals-pitching-rd.git && cd royals-pitching-rd
-make all       # fetch → sql → model → analysis → reports → pdf → pages (~15 min, mostly download)
+make all       # fetch → sql → model → analysis → lab → sequencing → teams → tunnel → reports → pdf → pages (~15 min, mostly download)
 make daily     # the in-season morning job: fetch → db → report → pdf
 make serve     # http://localhost:8000
 ```

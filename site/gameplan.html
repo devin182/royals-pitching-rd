@@ -24,10 +24,10 @@ p{margin:0 0 1em} .muted{color:var(--muted)} .accent{color:var(--gold)} .mono,.s
 .brand{font-family:var(--display);font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px;white-space:nowrap}
 .brand img{width:28px;height:28px}
 .nav ul{list-style:none;display:flex;gap:4px;margin:0 0 0 auto;padding:0}
-.nav li a{color:var(--muted);padding:8px 12px;border-radius:9px;font-weight:500;font-size:.95rem}
+.nav li a{color:var(--muted);padding:8px 9px;border-radius:9px;font-weight:500;font-size:.92rem;white-space:nowrap}
 .nav li a:hover,.nav li a.on{color:var(--text);background:var(--panel);text-decoration:none}
 .burger{display:none;margin-left:auto;background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;font-size:1.1rem}
-@media (max-width:820px){.burger{display:block}.nav ul{display:none;position:absolute;top:60px;left:0;right:0;flex-direction:column;background:var(--bg-deep);padding:10px 16px;border-bottom:1px solid var(--line)}.nav ul.open{display:flex}}
+@media (max-width:1180px){.burger{display:block}.nav ul{display:none;position:absolute;top:60px;left:0;right:0;flex-direction:column;background:var(--bg-deep);padding:10px 16px;border-bottom:1px solid var(--line)}.nav ul.open{display:flex}}
 /* hero */
 .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line);
   background:linear-gradient(90deg,var(--bg-deep) 0%,rgba(7,20,40,.86) 38%,rgba(7,20,40,.15) 70%),none center right/cover no-repeat}
@@ -110,15 +110,16 @@ footer{padding:36px 0 50px;color:var(--muted);font-size:.86rem}
 .vgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 @media (max-width:820px){.vgrid{grid-template-columns:repeat(2,1fr)}}
 </style>
-<script src="gameplan_data.js?v=21f83108c4"></script>
+<script src="gameplan_data.js?v=44b289718c"></script>
 </head><body>
 <nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
-<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html" class="on">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="season.html">Season</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html" class="on">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
 
 <section class="gp-head"><div class="wrap">
   <div class="eyebrow">Matchup model · Series prep</div>
   <h1 style="font-size:clamp(1.8rem,3.6vw,2.7rem)">Series Game Plan: <span id="h-opp">Opening Day 2027</span></h1>
   <p class="muted" style="max-width:820px">Pick a Royals starter and one of the first four 2027 opponents. A pitch-level model scores every pitch in the starter's real 2026 arsenal, in 13 locations and all 12 counts, against each hitter's profile: bat speed, swing length, attack angle, chase, whiff by pitch type, and contact quality. Small samples are shrunk toward league average. The plan shows what to throw, where, and in which count. Values are <b>runs per 100 pitches compared with the pitcher's usual mix</b> in that count against that hitter, from the pitcher's side (+ means good for the pitcher).</p>
+  <p class="muted" style="max-width:820px;font-size:.86rem;border-left:4px solid var(--team,#7AB2DD);padding-left:10px"><b>Royals only.</b> The rest of the site covers all 30 clubs. The game plan stays Kansas City-only: it needs each opponent's 2027 opening lineups and a per-hitter matchup run for every starter, which is too heavy to repeat for 30 teams here. The team picker on other pages does not change this page.</p>
   <div class="kpis" id="kpis"></div>
   <div class="controls" style="margin-top:28px">
     <label class="ctl">Royals starter<select id="pick"></select></label>
@@ -271,7 +272,7 @@ function statics(){
   document.getElementById('feas').textContent=pct(G.method.feasible); document.getElementById('habit').textContent=pct(G.method.habit);
   document.getElementById('m-model').innerHTML=`An xgboost regression on ${Number(pl.n_train+pl.n_test).toLocaleString()} 2026 pitches. The target is the pitcher's de-noised run value per pitch. Features: pitch traits (velocity, induced vertical and horizontal break, spin, extension, arm angle, release height, approach angle, and velocity/movement differences from his primary fastball), hitter-relative location, count, platoon, and a hitter profile. The profile uses bat speed, swing length, and attack angle from Statcast bat tracking, plus chase rate, zone-swing rate, zone whiff, whiff by pitch group, and xwOBA on contact. Each hitter stat is shrunk toward league average with an empirical-Bayes prior, for example 40 tracked swings for bat speed and 150 out-of-zone pitches for chase rate. A hitter-specific residual for pitch group × location band is added on top, shrunk with k = ${pl.res_k} pitches. Features are prepped in DuckDB SQL; the modeling is in R.`;
   document.getElementById('m-plan').innerHTML=`For each starter, every pitch type he threw at least 4% of the time against that batter side is scored at his average 2026 shape. Approach angle is re-solved for the target height. Each pitch is placed in each of 13 locations and all 12 counts against each hitter. Counts are grouped into first pitch, ahead, even, and behind, using league count frequencies as weights. Every value is shown relative to the pitcher's real 2026 usage in that count against that batter side, so +2.0 means that pitch-location choice is worth 2 runs per 100 pitches more than what he usually throws there. Switch hitters are scored from the side they'd bat against him. The three takeaways are generated from lineup-wide averages.`;
-  document.getElementById('src').innerHTML=`Opponent choice: the 2027 Royals schedule is published. Opening Day is Thursday, March 25, 2027 against the Twins at Kauffman Stadium, followed by the White Sox, then at St. Louis and at the Angels (<a href="https://apnews.com/article/2027-kansas-city-royals-schedule-4804d732222e0d55c13fd367e012f9e1">AP 2027 Royals schedule</a>; <a href="https://www.ksal.com/royals-announce-2027-regular-season-schedule/">Royals release via KSAL</a>). The schedule is subject to the 2027 CBA. Lineups and all numbers are computed from 2026 Statcast data; generated ${G.generated}.`;
+  document.getElementById('src').innerHTML=`Opponent choice: the 2027 Royals schedule is published. Opening Day is Thursday, March 25, 2027 against the Twins at Kauffman Stadium, followed by the White Sox, then at St. Louis and at the Angels (<a href="https://apnews.com/article/2027-kansas-city-royals-schedule-4804d732222e0d55c13fd367e012f9e1">AP 2027 Royals schedule</a>; <a href="https://www.ksal.com/royals-announce-2027-regular-season-schedule/">Royals release via KSAL</a>). The schedule is subject to the 2027 CBA. Lineups and all numbers are computed from 2026 Statcast data.`;
 }
 function init(){
   const s=document.getElementById('pick'); s.innerHTML=G.pitchers.map(p=>`<option value="${p.id}">${p.name} (${p.throws}HP · ${p.starts} GS)</option>`).join('');

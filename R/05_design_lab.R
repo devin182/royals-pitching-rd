@@ -2,8 +2,9 @@
 # Refits the three full-season Stuff+ models exactly as R/02 does (same features, params, nrounds from
 # data/out/stuff_validation.json), then writes:
 #   site/data/lab/model.json   flattened xgboost trees + base_score, Stuff+ scale (mu, sd), training ranges
-#   site/data/lab/royals.json  index of Royals pitcher-pitches (n >= 50); p/<id>_<type>.json holds up to
-#                              150 of its real pitches (the slider baseline), fetched on demand
+#   site/data/lab/teams/<TEAM>.json  per-team index of pitcher-pitches (50+ of the type for that team, pitcher 100+
+#                              pitches for the team); p/<id>_<type>.json holds up to 100 of his real pitches of
+#                              that type (all teams; the slider baseline), fetched on demand
 #   site/data/lab/comps.json   every MLB pitcher-pitch type (n >= 100): mean shape + published Stuff+
 #   tests/fixtures/lab_vectors.json  R predictions the JS evaluator must reproduce (tests/js/lab.test.js)
 # Reads the DuckDB file read-only.
@@ -12,7 +13,7 @@ source("R/lib/pipeline.R")
 set.seed(2026)
 con <- dbConnect(duckdb(), dbdir = Sys.getenv("DB_PATH", "data/statcast.duckdb"), read_only = TRUE)
 d <- as.data.table(dbGetQuery(con, "
-  SELECT pitcher, player_name, pitch_type, pitch_group, is_royals, p_throws, xrv AS rv,
+  SELECT pitcher, player_name, pitch_type, pitch_group, is_royals, pitch_team, p_throws, xrv AS rv,
          release_speed, ivb, hb_arm, release_spin_rate,
          CASE WHEN p_throws = 'L' THEN 360 - spin_axis ELSE spin_axis END AS spin_axis_arm,
          release_extension, release_pos_z, rel_side_arm, arm_angle,
@@ -68,27 +69,30 @@ rnd <- c(release_speed = 1, ivb = 2, hb_arm = 2, release_spin_rate = 0, spin_axi
 round_feats <- function(x) { for (f in feats) set(x, j = f, value = round(x[[f]], rnd[[f]])); x }
 pred_g <- function(x, g) predict(models[[g]]$model, xgb.DMatrix(as.matrix(x[, feats, with = FALSE]), missing = NA))
 
-# ---- Royals baselines: up to 150 real pitches per pitcher-pitch (n >= 50), features rounded for size
-roy <- agg[is_royals == TRUE & n >= 50][order(player_name, -n)]
-roy <- merge(roy, prim, by = "pitcher", all.x = TRUE)[order(player_name, -n)]
-royals <- lapply(seq_len(nrow(roy)), function(i) {
-  r <- roy[i]
-  s <- d[pitcher == r$pitcher & pitch_type == r$pitch_type & is_royals]
-  s <- round_feats(copy(s[sample(.N, min(.N, 150))]))
+# ---- baselines for every team: up to 100 real pitches per pitcher-pitch type, features rounded for size
+tt <- d[, .(n_team = .N), by = .(pitch_team, pitcher, pitch_type)]
+tt <- tt[n_team >= 50][d[, .(np = .N), by = .(pitch_team, pitcher)][np >= 100], on = .(pitch_team, pitcher), nomatch = 0]
+keys <- merge(unique(tt[, .(pitcher, pitch_type)]), merge(agg, prim, by = "pitcher", all.x = TRUE), by = c("pitcher", "pitch_type"))
+setkey(d, pitcher, pitch_type)
+base <- lapply(seq_len(nrow(keys)), function(i) {
+  r <- keys[i]
+  s <- d[.(r$pitcher, r$pitch_type)]
+  s <- round_feats(copy(s[sample(.N, min(.N, 100))]))
   p <- pred_g(s, r$pitch_group)
   list(pitcher = r$pitcher, name = r$player_name, throws = r$p_throws, pitch_type = r$pitch_type, group = r$pitch_group,
-       n = r$n, primary_fb = identical(r$fb_type, r$pitch_type), stuff_pub = r$stuff_pub, stuff_lab_full = r$stuff_lab,
-       r_pred_mean = mean(p), r_stuff_sample = stuff_plus(mean(p), mu, sdv),
-       rows = lapply(feats, function(f) s[[f]]))
+       n_all = r$n, primary_fb = identical(r$fb_type, r$pitch_type), stuff_pub = r$stuff_pub, stuff_lab_full = r$stuff_lab,
+       r_pred_mean = mean(p), r_stuff_sample = stuff_plus(mean(p), mu, sdv), rows = lapply(feats, function(f) s[[f]]))
 })
-names(royals) <- NULL
+bkey <- paste(keys$pitcher, keys$pitch_type)
+team_of <- d[, .N, by = .(pitcher, pitch_team)][order(-N)][, .(team = first(pitch_team)), by = pitcher]
 
 # ---- comparables: every MLB pitcher-pitch type with n >= 100 (mean shape + published Stuff+)
 shape <- d[, .(release_speed = mean(release_speed), ivb = mean(ivb), hb_arm = mean(hb_arm),
                release_spin_rate = mean(release_spin_rate, na.rm = TRUE), release_pos_z = mean(release_pos_z),
                rel_side_arm = mean(rel_side_arm), release_extension = mean(release_extension, na.rm = TRUE)),
            by = .(pitcher, pitch_type)]
-comps <- merge(agg[n >= 100, .(pitcher, pitch_type, n, name = player_name, throws = p_throws, stuff = stuff_pub, kc = is_royals)],
+comps <- merge(merge(agg[n >= 100, .(pitcher, pitch_type, n, name = player_name, throws = p_throws, stuff = stuff_pub)],
+                     team_of, by = "pitcher"),
                shape, by = c("pitcher", "pitch_type"))
 num <- c("release_speed", "ivb", "hb_arm", "release_spin_rate", "release_pos_z", "rel_side_arm", "release_extension")
 for (f in num) set(comps, j = f, value = round(comps[[f]], if (f == "release_spin_rate") 0 else 2))
@@ -107,8 +111,8 @@ vec <- rbindlist(lapply(groups, function(g) {
 fixtures <- list(features = feats, mu = mu, sd = sdv,
                  rows = lapply(seq_len(nrow(vec)), function(i) list(group = vec$group[i],
                                  x = unname(as.list(unlist(vec[i, feats, with = FALSE]))), r_pred = vec$r_pred[i])),
-                 royals = lapply(royals, function(r) list(pitcher = r$pitcher, pitch_type = r$pitch_type,
-                                                          r_pred_mean = r$r_pred_mean, r_stuff = r$r_stuff_sample)))
+                 baselines = lapply(base, function(r) list(pitcher = r$pitcher, pitch_type = r$pitch_type, group = r$group,
+                                                           r_pred_mean = r$r_pred_mean, r_stuff = r$r_stuff_sample)))
 
 out <- "site/data/lab"; dir.create(out, showWarnings = FALSE, recursive = TRUE)
 model_json <- list(features = feats, mu = mu, sd = sdv, nrounds = as.list(nr),
@@ -116,11 +120,19 @@ model_json <- list(features = feats, mu = mu, sd = sdv, nrounds = as.list(nr),
                    ranges = ranges[groups], agreement_with_published = as.list(agree),
                    note = "Full-season xgboost Stuff+ models refit with R/02's features, params and nrounds (R/05_design_lab.R).")
 write_json(model_json, file.path(out, "model.json"), auto_unbox = TRUE, digits = NA, na = "null")
-# index (no rows) + one small file per pitcher-pitch, fetched only when the user picks it
-unlink(file.path(out, "royals.json")); dir.create(file.path(out, "p"), showWarnings = FALSE)
-write_json(lapply(royals, function(r) r[names(r) != "rows"]), file.path(out, "royals.json"), auto_unbox = TRUE, digits = NA, na = "null")
-for (r in royals) write_json(list(features = feats, rows = r$rows), file.path(out, "p", sprintf("%s_%s.json", r$pitcher, r$pitch_type)),
-                             auto_unbox = TRUE, digits = NA, na = "null")
+# per-team index (no rows) + one small file per pitcher-pitch, fetched only when the user picks it
+unlink(file.path(out, c("royals.json", "p", "teams")), recursive = TRUE)
+dir.create(file.path(out, "p"), showWarnings = FALSE); dir.create(file.path(out, "teams"), showWarnings = FALSE)
+for (t in sort(unique(tt$pitch_team))) {
+  x <- tt[pitch_team == t][order(-np, -n_team)]
+  idx <- lapply(seq_len(nrow(x)), function(i) {
+    b <- base[[match(paste(x$pitcher[i], x$pitch_type[i]), bkey)]]
+    c(b[names(b) != "rows"], list(n = x$n_team[i]))
+  })
+  write_json(idx, file.path(out, "teams", paste0(t, ".json")), auto_unbox = TRUE, digits = NA, na = "null")
+}
+for (b in base) write_json(list(features = feats, rows = b$rows), file.path(out, "p", sprintf("%s_%s.json", b$pitcher, b$pitch_type)),
+                           auto_unbox = TRUE, digits = NA, na = "null")
 write_json(comps, file.path(out, "comps.json"), auto_unbox = TRUE, digits = NA, na = "null", dataframe = "columns")
 write_json(fixtures, "tests/fixtures/lab_vectors.json", auto_unbox = TRUE, digits = NA, na = "null")
-cat("royals pitch types:", length(royals), " comps:", nrow(comps), " test rows:", nrow(vec), "\n")
+cat("pitcher-pitch baselines:", length(base), " teams:", uniqueN(tt$pitch_team), " comps:", nrow(comps), " test rows:", nrow(vec), "\n")

@@ -1,0 +1,132 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coach Card · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
+<meta name="description" content="Independent pitching analytics portfolio: season-long Statcast tracking of 2026 MLB pitching staffs (all 30 clubs; Royals featured) with DuckDB SQL, R and xgboost.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="assets/style.css?v=8bdbd48701">
+<script>window.DATA_V="51b8b68e91";</script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=02a2f47ee1" defer></script>
+</head><body>
+<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="" width="28" height="28">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="season.html">Season</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
+<section style="padding-top:34px" class="cardpage"><div class="wrap">
+  <div class="noprint">
+    <div class="eyebrow">Coach card · generated in your browser</div>
+    <div data-teambar="Cards for every pitcher with 300+ pitches for the club, built on the fly from the same JSON as the Explorer."></div>
+    <div class="controls"><label class="ctl">Pitcher<select id="cpick"></select></label>
+      <button class="btn" id="cprint" type="button" style="margin-left:auto">Print / save PDF</button></div>
+  </div>
+  <article class="sheet2" id="sheet"><p class="muted">Loading…</p></article>
+  <p class="caption noprint">This card applies the same rules as the R Markdown cards on the <a href="reports.html" data-team-link>Reports</a> page (rates quoted only with 50+ swings; xRV/100 shrunk toward the league average with a 250-pitch prior), using only pitches thrown for the selected club. The location panel uses the same random sample of up to 450 pitches as the Explorer; every other number uses all of his pitches for that club.</p>
+</div></section>
+<script>
+(function(){
+  const MIN_SW=50, MIN_N=30, CNT=['Ahead','Even','Behind','Two strikes'], CG={A:'Ahead',E:'Even',B:'Behind',T:'Two strikes'};
+  let IDX=[], REQ=0;
+  const $=id=>document.getElementById(id);
+  const low1=s=>s? s.charAt(0).toLowerCase()+s.slice(1) : s;
+  const woba=x=>x==null?'–':Number(x).toFixed(3).replace(/^0/,'');
+  function takeaways(p, c){
+    const ars=p.arsenal, nm=pt=>{ const a=ars.find(x=>x.pitch_type===pt); return a? low1((a.pitch_name||NAMES[pt]).replace(/ Fastball$/,' fastball')) : pt; };
+    const by=colsToRows(c.bycnt), two={};
+    by.filter(r=>r.cnt==='Two strikes').forEach(r=>{ two[r.pitch_type]={pt:r.pitch_type,n:r.n,sw:r.sw,wh:r.wh}; });
+    const tw=Object.values(two), n2=tw.reduce((a,r)=>a+r.n,0); tw.forEach(r=>{ r.share=r.n/n2; r.whiff=r.wh/Math.max(1,r.sw); });
+    tw.sort((a,b)=>b.n-a.n); const most=tw[0];
+    const q2=tw.filter(r=>r.sw>=MIN_SW).sort((a,b)=>b.whiff-a.whiff); const pa=q2[0]||most;
+    let t1;
+    if(q2.length){ const s=(ars.find(a=>a.pitch_type===pa.pt)||{}).stuff_plus, nx=q2.find(r=>r.pt!==pa.pt);
+      t1={tag:'Attack', line: pa.pt===most.pt?`The ${nm(pa.pt)} is the put-away pitch. Use it to finish at-bats.`:`Lean on the ${nm(pa.pt)} with two strikes. It misses the most bats.`,
+        stat:`${pct(pa.share)} of two-strike pitches · ${pct(pa.whiff)} whiffs/swing (${pa.sw} swings)`,
+        detail:(s!=null?`It grades ${s} Stuff+. `:'')+(nx?`Next best two-strike miss rate: the ${nm(nx.pt)} at ${pct(nx.whiff)}.`:'No other pitch has 50+ two-strike swings yet.')};
+    } else t1={tag:'Watch', line:`The ${nm(most.pt)} is his most-used two-strike pitch.`, stat:`${pct(most.share)} of two-strike pitches · ${most.sw} two-strike swings so far`,
+      detail:'No pitch has 50+ two-strike swings yet, so this card does not name a put-away pitch by miss rate.'};
+    let cand=ars.filter(a=>a.n>=100&&a.xrv100!=null); if(!cand.length) cand=ars.filter(a=>a.n>=MIN_N&&a.xrv100!=null);
+    cand.sort((a,b)=>a.xrv100-b.xrv100); const wp=cand[0]; let t2;
+    if(wp && wp.xrv100<0){ const beh=by.filter(r=>r.cnt==='Behind'), nb=beh.reduce((a,r)=>a+r.n,0), wb=(beh.find(r=>r.pitch_type===wp.pitch_type)||{n:0}).n;
+      const best=cand[cand.length-1];
+      t2={tag:'Avoid', line: wp.pitch_type===pa.pt&&q2.length?`The ${nm(wp.pitch_type)} is also his most-hit pitch. Save it for two strikes.`:`Limit the ${nm(wp.pitch_type)}. It is his most damaging pitch.`,
+        stat:`xRV/100 ${sgn(wp.xrv100,2)} shrunk (raw ${sgn(wp.xrv100_raw,2)}) · ${woba(wp.xwoba_con)} xwOBAcon · ${wp.n} pitches`,
+        detail:`When behind in the count he throws it ${pct(nb?wb/nb:0)} of the time${cand.length>1?`; the ${nm(best.pitch_type)} grades ${sgn(best.xrv100,2)} there instead`:''}.`};
+    } else if(wp) t2={tag:'Watch', line:`Every pitch grades above average. The weakest is the ${nm(wp.pitch_type)}.`, stat:`xRV/100 ${sgn(wp.xrv100,2)} shrunk · ${wp.n} pitches`,
+      detail:'Shrunk toward the league average for the pitch type (250-pitch prior), so small edges are real but modest.'};
+    const fb=c.fb, L=c.loc.find(r=>r.pitch_type===fb)||{n:0,n_hi:0,sw_hi:0,wh_hi:0,n_lo:0,sw_lo:0,wh_lo:0};
+    const hs=L.sw_hi, ls=L.sw_lo, hw=L.wh_hi/Math.max(1,hs), lw=L.wh_lo/Math.max(1,ls), fa=ars.find(a=>a.pitch_type===fb)||{};
+    let t3;
+    if(hs>=MIN_SW&&ls<MIN_SW&&hw>=c.lg_up+0.03) t3={tag:'Watch', line:`Use the ${nm(fb)} up in the zone. It beats the league rate there.`,
+      stat:`${pct(hw)} whiffs/swing up (${hs} sw) vs ${pct(c.lg_up)} MLB ${fb} up`, detail:`${pct(L.n_hi/L.n)} of his ${nm(fb)}s finish in the top third. Too few swings down (${ls}) to compare.`};
+    else if(hs>=MIN_SW&&ls>=MIN_SW) t3={tag:'Watch', line: hw>lw?`Elevate the ${nm(fb)}. Hitters miss it up.`:`Keep the ${nm(fb)} down. It misses more bats low.`,
+      stat:`${pct(hw)} whiffs up (${hs} sw) vs ${pct(lw)} down (${ls} sw) · VAA ${fmt(fa.vaa)}°`, detail:`${pct(L.n_hi/L.n)} of his ${nm(fb)}s finish in the top third of the zone and ${pct(L.n_lo/L.n)} in the bottom third.`};
+    else { const oz=c.loc.filter(r=>r.pitch_type!==pa.pt&&r.oz>=100).map(r=>({pt:r.pitch_type,n:r.oz,rate:r.ch/r.oz})).sort((a,b)=>b.rate-a.rate);
+      t3= oz.length? {tag:'Watch', line:`After the ${nm(pa.pt)}, hitters chase the ${nm(oz[0].pt)} most.`, stat:`${pct(oz[0].rate)} chased on ${oz[0].n} out-of-zone pitches`, detail:`Fastball height splits are too thin to call (${hs} swings up, ${ls} down).`}
+        : {tag:'Watch', line:`Build the ${nm(fb)} sample before setting a height plan.`, stat:`${hs} swings up · ${ls} swings down`, detail:'Rates under 50 swings are not quoted on this card.'}; }
+    return {tk:[t1,t2,t3].filter(Boolean), tw, by};
+  }
+  function svgMove(p, pts){
+    const W=300,H=300, xs=pts.map(r=>r.hb).concat([-5,5]), ys=pts.map(r=>r.ivb).concat([-5,5]);
+    const lo=Math.min(...xs,...ys)-2, hi=Math.max(...xs,...ys)+2, X=v=>20+(W-30)*(v-lo)/(hi-lo), Y=v=>H-24-(H-34)*(v-lo)/(hi-lo);
+    let g=`<line x1="${X(0)}" x2="${X(0)}" y1="10" y2="${H-24}" stroke="#3A5A85"/><line y1="${Y(0)}" y2="${Y(0)}" x1="20" x2="${W-10}" stroke="#3A5A85"/>`;
+    g+=pts.map(r=>`<circle cx="${X(r.hb).toFixed(1)}" cy="${Y(r.ivb).toFixed(1)}" r="1.8" fill="${PAL[r.pitch_type]}" fill-opacity=".45"/>`).join('');
+    g+=p.arsenal.map(a=>`<text x="${X(a.hb_arm)}" y="${Y(a.ivb)+4}" text-anchor="middle" class="code" fill="${a.n>=MIN_N?PAL[a.pitch_type]:'#9AA3B5'}">${a.pitch_type}</text>`).join('');
+    g+=`<text x="${W/2}" y="${H-6}" text-anchor="middle" class="ax">Horizontal break, in (arm side →)</text><text x="8" y="${H/2}" transform="rotate(-90 8 ${H/2})" text-anchor="middle" class="ax">IVB, in</text>`;
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Movement chart">${g}</svg>`;
+  }
+  function svgLoc(pts){
+    const W=150,H=160, X=v=>W/2+v*36, Y=v=>H-30-v*80;
+    return CNT.map(k=>{ const s=pts.filter(r=>CG[r.c]===k&&r.px!=null&&r.pz!=null);
+      return `<div class="lm"><div class="lmh">${k} <span class="muted">n=${s.length}</span></div><svg viewBox="0 0 ${W} ${H}"><rect x="${X(-0.83)}" y="${Y(1)}" width="${0.83*72}" height="80" fill="none" stroke="#E8EEF4" stroke-width="1"/>`+
+        s.map(r=>`<circle cx="${X(r.px).toFixed(1)}" cy="${Y(r.pz).toFixed(1)}" r="2" fill="${PAL[r.pitch_type]}" fill-opacity=".55"/>`).join('')+`</svg></div>`; }).join('');
+  }
+  function svgPut(p, tw){
+    const rows=p.arsenal.map(a=>{ const t=tw.find(r=>r.pt===a.pitch_type)||{share:0,sw:0,n:0,whiff:0}; return {a,t}; });
+    const mx=Math.max(...rows.map(r=>Math.max(r.a.usage,r.t.share)))+.32, W=300, rh=26, H=rows.length*rh+30, X=v=>44+(W-50)*v/mx;
+    let g=rows.map((r,i)=>{ const y=10+i*rh; return `<text x="40" y="${y+15}" text-anchor="end" class="code" fill="#E8EEF4">${r.a.pitch_type}</text>`+
+      `<rect x="44" y="${y+2}" width="${X(r.a.usage)-44}" height="18" fill="#2A4466"/><rect x="44" y="${y+7}" width="${Math.max(0,X(r.t.share)-44)}" height="8" fill="${r.t.n>=MIN_N?PAL[r.a.pitch_type]:'#9AA3B5'}"/>`+
+      `<text x="${X(Math.max(r.a.usage,r.t.share))+4}" y="${y+15}" class="lab">${pct(r.t.share)}${r.t.sw>=MIN_SW?' · '+pct(r.t.whiff)+' wh':''}</text>`; }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Two-strike usage">${g}<text x="${W/2}" y="${H-4}" text-anchor="middle" class="ax">Share of pitches (grey = overall, colour = two strikes)</text></svg>`;
+  }
+  function render(p, x){
+    const c=x.card, pts=colsToRows(x.pitches), {tk,tw}=takeaways(p,c), team=teamInfo(), ars=p.arsenal, sw=pt=>`<span class="pitch-swatch" style="background:${PAL[pt]}"></span>`;
+    const fb=c.fb, fa=ars.find(a=>a.pitch_type===fb), oth=ars.filter(a=>a.pitch_type!==fb&&a.n>=MIN_N&&fa).map(a=>({a,di:a.ivb-fa.ivb,dh:a.hb_arm-fa.hb_arm})).map(o=>Object.assign(o,{d:Math.hypot(o.di,o.dh)})).sort((u,v)=>v.d-u.d)[0];
+    const coMv= oth? `The ${oth.a.pitch_type} finishes ${fmt(oth.d,0)} in from his ${fb}, with ${Math.abs(oth.di)>=Math.abs(oth.dh)?`${fmt(Math.abs(oth.di),0)} in ${oth.di<0?'less':'more'} rise`:`${fmt(Math.abs(oth.dh),0)} in more ${oth.dh>0?'arm-side':'glove-side'} run`}.`:'';
+    const by=colsToRows(c.bycnt), zr=k=>{ const r=by.filter(b=>b.cnt===k); const n=r.reduce((a,b)=>a+b.n,0); return n? r.reduce((a,b)=>a+b.iz,0)/n : 0; }, za=zr('Ahead'), zb=zr('Behind');
+    const coLoc= Math.abs(zb-za)<0.03? `He fills the zone at about the same rate ahead (${pct(za)}) and behind (${pct(zb)}).` : `He throws ${pct(zb)} of pitches in the zone when behind and ${pct(za)} when ahead.`;
+    const top=tw[0], coPut= top? `The ${top.pt} is ${pct(top.share)} of two-strike pitches vs ${pct((ars.find(a=>a.pitch_type===top.pt)||{}).usage)} overall.`:'';
+    const vh=colsToRows(c.vh), tot={L:0,R:0}; vh.forEach(r=>{ tot[r.stand]+=r.n; });
+    const cell=(pt,s)=>{ const r=vh.find(v=>v.pitch_type===pt&&v.stand===s); if(!r) return '<td>–</td><td>–</td><td>–</td><td>–</td>';
+      return `<td>${r.n}</td><td>${pct(r.n/tot[s])}</td><td>${r.sw>=MIN_SW?pct(r.wh/r.sw):'–'}</td><td>${woba(r.xw)}</td>`; };
+    $('sheet').innerHTML=`<header class="hdr2"><div><h1>${nice(p.name)}</h1><p class="mono muted">${team.name} (${team.team}) · ${p.throws==='R'?'RHP':'LHP'} · 2026 · ${p.games} G (${p.starts} GS) · ${p.n.toLocaleString()} pitches · ${p.d0} – ${p.d1}</p></div>
+      <p class="disc">Independent portfolio sample by Devin Jenkinson, not affiliated with any club. Every number is computed from public Statcast data.</p></header>
+      <p class="kick">Three big takeaways</p><div class="tk">${tk.map((t,i)=>`<div class="tkc"><div><span class="num">${i+1}</span> <span class="tag2 ${t.tag.toLowerCase()}">${t.tag}</span></div><p class="line">${t.line}</p><p class="stat mono">${t.stat}</p><p class="detail muted">${t.detail}</p></div>`).join('')}</div>
+      <p class="kick">Charts</p><div class="ch3">
+        <figure><h3>Movement</h3><p class="co">${coMv}</p>${svgMove(p,pts)}<figcaption>n = ${pts.length} sampled pitches; codes sit at the season averages. Grey codes: under 30 pitches.</figcaption></figure>
+        <figure><h3>Location by count</h3><p class="co">${coLoc}</p><div class="lms">${svgLoc(pts)}</div><figcaption>Catcher view; height scaled to each hitter's zone. Box = rule-book zone. Sample of up to 450 pitches.</figcaption></figure>
+        <figure><h3>Put-away usage</h3><p class="co">${coPut}</p>${svgPut(p,tw)}<figcaption>Two-strike n: ${tw.map(r=>`${r.pt} ${r.n}`).join(', ')}. wh = whiffs per swing (50+ swings).</figcaption></figure></div>
+      <div class="ch2"><div><h3>Arsenal</h3><div class="tblwrap"><table class="tbl"><thead><tr><th>Pitch</th><th>#</th><th>Use</th><th>Velo</th><th>IVB</th><th>HB</th><th>VAA</th><th>Whiff</th><th>Chase</th><th>xwOBAcon</th><th>xRV/100</th><th>Stuff+</th></tr></thead><tbody>
+        ${ars.map(a=>`<tr><td>${sw(a.pitch_type)}${(a.pitch_name||'').replace(/ Fastball$/,'')} (${a.pitch_type})</td><td>${a.n}</td><td>${pct(a.usage)}</td><td>${fmt(a.velo)}</td><td>${fmt(a.ivb)}</td><td>${sgn(a.hb_arm)}</td><td>${fmt(a.vaa)}</td><td>${a.swings>=MIN_SW?pct(a.whiff_rate):'–'}</td><td>${pct(a.chase_rate)}</td><td>${woba(a.xwoba_con)}</td><td>${sgn(a.xrv100,2)}</td><td>${a.stuff_plus??'–'}</td></tr>`).join('')}</tbody></table></div>
+        <p class="caption">xRV/100 = expected run value per 100 pitches, pitcher's view, shrunk with a 250-pitch prior. Stuff+ = this project's shape-only model (100 = MLB average).</p></div>
+        <div><h3>Vs. batter hand</h3><div class="tblwrap"><table class="tbl"><thead><tr><th>Pitch</th><th>LHH #</th><th>Use</th><th>Whiff</th><th>xwOBAcon</th><th>RHH #</th><th>Use</th><th>Whiff</th><th>xwOBAcon</th></tr></thead><tbody>
+        ${ars.map(a=>`<tr><td>${sw(a.pitch_type)}${a.pitch_type}</td>${cell(a.pitch_type,'L')}${cell(a.pitch_type,'R')}</tr>`).join('')}</tbody></table></div>
+        <p class="caption">Use = share of pitches to that side. Whiff shown with 50+ swings.</p></div></div>
+      <p class="caption">Source: Baseball Savant Statcast search (public pitch-level data, 2026 regular season), processed with DuckDB SQL + R. Not produced by or affiliated with any MLB club.</p>`;
+    document.title=`${nice(p.name)} · Coach card · Devin Jenkinson`;
+  }
+  function pick(i){ const p=IDX[i], r=++REQ; const u=new URL(location.href); u.searchParams.set('team',CUR_TEAM); u.searchParams.set('p',p.id); if(!document.documentElement.classList.contains('embed')) history.replaceState(null,'',u);
+    return getJSON(`data/t/${CUR_TEAM}/p/${p.id}.json`).then(x=>{ if(r===REQ) render(p,x); }); }
+  function load(want){ return getJSON(`data/t/${CUR_TEAM}/index.json`).then(d=>{ IDX=d.pitchers;
+    $('cpick').innerHTML=IDX.map((p,i)=>`<option value="${i}">${nice(p.name)} (${p.throws}HP, ${p.n.toLocaleString()})</option>`).join('');
+    const i=Math.max(0,IDX.findIndex(p=>String(p.id)===String(want))); $('cpick').value=i; return pick(i); }); }
+  if(new URLSearchParams(location.search).get('embed')) document.documentElement.classList.add('embed');
+  document.addEventListener('DOMContentLoaded',()=>{
+    $('cpick').onchange=e=>pick(e.target.value); $('cprint').onclick=()=>window.print();
+    teamsReady.then(()=>load(new URLSearchParams(location.search).get('p')));
+    document.addEventListener('teamchange',()=>load(null));
+  });
+})();
+</script>
+<footer><div class="wrap">
+<p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API.
+Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> (<a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
+</div></footer></body></html>

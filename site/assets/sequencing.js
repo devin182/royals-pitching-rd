@@ -1,7 +1,7 @@
 // Sequencing page: model grid + empirical cells from R/06_sequencing.R (site/data/sequencing.json)
 (function () {
   const $ = (id) => document.getElementById(id);
-  let S, st = { pt: "FF", loc: "Zone up", res: "Called strike", count: "0-1", m: 0 };
+  let S, TC = {}, st = { pt: "FF", loc: "Zone up", res: "Called strike", count: "0-1", m: 0 };
   const MET = ["CSW", "Whiff / swing", "xRV / 100"];
   const LOCN = { "Zone up": "up in the zone", "Zone down": "low in the zone", "Out above": "above the zone", "Out below": "below the zone", "Out side": "off the plate" };
   const RESN = { Ball: "taken for a ball", "Called strike": "taken for a strike", Whiff: "swung through", Foul: "fouled off" };
@@ -45,7 +45,7 @@
         <div class="qbar"><div class="qfill" style="left:${X(Math.min(0, v))}%;width:${Math.abs(X(v) - X(0))}%;background:${PAL[t]}"></div>
           <div class="qbase" style="left:${X(bv)}%" title="no-sequence baseline ${vfmt(bv)}"></div></div>
         <div class="qval mono">${vfmt(v)} <span class="muted" style="font-size:.8em">${st.m === 2 ? sgn(d, 2) : sgn(100 * d, 1) + " pts"} vs base</span></div>
-        <div class="qemp">${empTxt(cell(S.league, ekey, t), "League", 50)} · ${empTxt(cell(S.royals, ekey, t), "Royals", 50)}</div></div>`;
+        <div class="qemp">${empTxt(cell(S.league, ekey, t), "League", 50)} · ${empTxt(cell(TC, ekey, t), CUR_TEAM, 50)}</div></div>`;
     }).join("");
     const best = order[0], diffs = S.types.map((t, i) => vals[i] - base[i]), mx = diffs.indexOf(Math.max(...diffs)), mn = diffs.indexOf(Math.min(...diffs));
     const u = (x) => (st.m === 2 ? `${sgn(x, 2)} runs/100` : `${sgn(100 * x, 1)} pts`);
@@ -75,6 +75,9 @@
     pills("qpt", S.types, "pt"); pills("qloc", S.locs, "loc"); pills("qres", S.results, "res");
     $("qcount").addEventListener("change", (e) => { st.count = e.target.value; draw(); });
     $("qmet").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { st.m = +b.dataset.m; draw(); }));
-    valTable(); royals(); fixCount(); draw();
+    valTable(); royals(); fixCount();
+    // the team column uses data/seq/<TEAM>.json (all counts pooled, that club's pitchers only), loaded per team
+    const loadTeam = () => getJSON(`data/seq/${CUR_TEAM}.json`).then((t) => { TC = t.cells; draw(); });
+    teamsReady.then(loadTeam); document.addEventListener("teamchange", loadTeam);
   }));
 })();

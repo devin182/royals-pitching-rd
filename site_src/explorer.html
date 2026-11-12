@@ -1,11 +1,12 @@
 <section style="padding-top:44px"><div class="wrap">
   <div class="eyebrow">Interactive</div>
   <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">Pitcher Explorer</h1>
-  <p class="muted" style="max-width:780px">Pick any Royals pitcher with 300+ pitches in 2026. Movement, release, location and count usage all come from his actual pitches. Movement is from the pitcher's arm side (+ = arm side) so righties and lefties read the same way. Charts use a random sample of up to 450 pitches; the table uses every pitch.</p>
+  <div data-teambar></div>
+  <p class="muted" style="max-width:780px">Pick any pitcher with 300+ pitches for the selected team across the 2026 season (Mar 25 – Sep 27). A pitcher traded mid-season is listed under each club with only the pitches he threw for it. Movement, release, location and count usage all come from his actual pitches. Movement is from the pitcher's arm side (+ = arm side) so righties and lefties read the same way. Charts use a random sample of up to 450 pitches; the table uses every pitch.</p>
   <div class="controls">
     <label class="ctl">Pitcher<select id="pick"></select></label>
     <div id="summary" class="muted" style="padding-bottom:9px"></div>
-    <a id="cardlink" class="btn" style="margin-left:auto" target="_blank">Printable pitcher card ↗</a>
+    <a id="cardlink" class="btn" style="margin-left:auto" target="_blank">Coach card ↗</a>
   </div>
   <div class="tblwrap"><table class="tbl" id="ars"></table></div>
   <p class="caption">Velo/Max in mph · Spin in rpm · IVB/HB in inches · Ext = extension (ft) · VAA = vertical approach angle (°) · Rel Δ = release-point offset from his primary fastball (inches, height / side) · Whiff = whiffs per swing, with its 95% Wilson interval · Chase = swing rate out of zone · CSW = called + swinging strikes per pitch · RV/100 = run value per 100 pitches, pitcher's view (+ is good) · Stuff+ = this project's shape-only model (100 = MLB average, see <a href="research.html#stuff">Research</a>).</p>
@@ -109,18 +110,26 @@ function render(){
   document.getElementById('ptpick').innerHTML=types.map(t=>`<button data-t="${t}" class="${t===PT?'on':''}">${t}</button>`).join('');
   document.querySelectorAll('#ptpick button').forEach(b=>b.onclick=()=>{PT=b.dataset.t;render();});
   heat(p);
-  document.getElementById('summary').textContent=`${p.throws==='R'?'RHP':'LHP'} · ${p.games} games · ${p.n.toLocaleString()} pitches`;
-  document.getElementById('cardlink').href=`reports/cards/${p.id}.html`;
+  document.getElementById('summary').textContent=`${CUR_TEAM} · ${p.throws==='R'?'RHP':'LHP'} · ${p.games} games (${p.starts} starts) · ${p.n.toLocaleString()} pitches · ${p.d0} to ${p.d1}`;
+  document.getElementById('cardlink').href=`card.html?team=${CUR_TEAM}&p=${p.id}`;
+}
+// team index (arsenal tables) from data/t/<TEAM>/index.json; the pitch sample, location grid and count usage
+// live in data/t/<TEAM>/p/<id>.json and load only when that pitcher is picked
+let REQ=0;
+function pick(i){ const p=DATA[i], t=CUR_TEAM, r=++REQ;
+  return getJSON(`data/t/${t}/p/${p.id}.json`).then(x=>{ if(r!==REQ) return;
+    CUR=Object.assign({}, p, {pitches:colsToRows(x.pitches), heat:colsToRows(x.heat), counts:x.counts}); render(); }); }
+function loadTeam(wantP){
+  return getJSON(`data/t/${CUR_TEAM}/index.json`).then(d=>{ DATA=d.pitchers; const sel=document.getElementById('pick');
+    sel.innerHTML=DATA.map((p,i)=>`<option value="${i}">${nice(p.name)} (${p.throws}HP, ${p.n.toLocaleString()} pitches)</option>`).join('');
+    const idx=Math.max(0,DATA.findIndex(p=>String(p.id)===String(wantP))); sel.value=idx; return pick(idx); });
 }
 document.addEventListener('DOMContentLoaded',()=>{
-  getJSON('data/explorer_index.json').then(d=>{ DATA=d; const sel=document.getElementById('pick');
-    sel.innerHTML=d.map((p,i)=>`<option value="${i}">${nice(p.name)} (${p.throws}HP, ${p.n.toLocaleString()} pitches)</option>`).join('');
-    const want=new URLSearchParams(location.search).get('p'); const idx=Math.max(0,d.findIndex(p=>String(p.id)===want));
-    // pitch sample + location grid live in data/explorer/<id>.json, loaded when the pitcher is picked
-    const pick=i=>getJSON(`data/explorer/${d[i].id}.json`).then(x=>{ CUR=Object.assign(d[i],x); render(); });
-    sel.value=idx; pick(idx); sel.onchange=()=>pick(sel.value);
-    document.querySelectorAll('#metric button').forEach(b=>b.onclick=()=>{MET=b.dataset.m;document.querySelectorAll('#metric button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
-    document.querySelectorAll('#side button').forEach(b=>b.onclick=()=>{SIDE=b.dataset.s;document.querySelectorAll('#side button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
-  });
+  const sel=document.getElementById('pick');
+  sel.onchange=()=>{ pick(sel.value); const u=new URL(location.href); u.searchParams.set('p',DATA[sel.value].id); history.replaceState(null,'',u); };
+  document.querySelectorAll('#metric button').forEach(b=>b.onclick=()=>{MET=b.dataset.m;document.querySelectorAll('#metric button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
+  document.querySelectorAll('#side button').forEach(b=>b.onclick=()=>{SIDE=b.dataset.s;document.querySelectorAll('#side button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
+  teamsReady.then(()=>loadTeam(new URLSearchParams(location.search).get('p')));
+  document.addEventListener('teamchange',()=>loadTeam(null));
 });
 </script>

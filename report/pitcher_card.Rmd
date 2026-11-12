@@ -259,12 +259,12 @@ cat(sprintf('<article class="sheet">
 <section class="tables"><div class="table-block"><h3>Arsenal</h3><div class="table-slot">%s</div>
 <p class="table-note">IVB / HB in inches (HB + = arm side). VAA in degrees at the front of the plate. xRV/100 = expected run value per 100 pitches, pitcher\'s view, shrunk with a 250-pitch prior. Stuff+ = this project\'s shape-only model (100 = MLB average, 10 = 1 SD).</p></div>
 <div class="table-block"><h3>Vs. batter hand</h3><div class="table-slot">%s</div><p class="table-note">Use = share of pitches to that side. Whiff = whiffs per swing, shown with 50+ swings.</p></div></section>
-<footer class="ftr"><div>Source: Baseball Savant Statcast search (public pitch-level data, 2026 regular season), processed with DuckDB SQL + R (xgboost). Independent portfolio sample, not produced by or affiliated with any MLB club.</div><div class="build">Built %s</div></footer>
+<footer class="ftr"><div>Source: Baseball Savant Statcast search (public pitch-level data, 2026 regular season), processed with DuckDB SQL + R (xgboost). Independent portfolio sample, not produced by or affiliated with any MLB club.</div></footer>
 </article>',
   esc(name), side_word, info$team, info$g, info$starts, format(info$n, big.mark = ","),
   format(as.Date(info$d0), "%b %d"), format(as.Date(info$d1), "%b %d, %Y"), tk_html,
   blk("Movement", co_mv, ch_mv, n_mv), blk("Location by count", co_loc, ch_loc, n_loc, "multiples"), blk("Put-away", co_put, ch_put, n_put),
-  tab_ars, tab_vh, format(Sys.Date(), "%d %b %Y")))
+  tab_ars, tab_vh))
 ```
 
 ```{r close}

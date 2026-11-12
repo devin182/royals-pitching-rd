@@ -1,7 +1,8 @@
 <section style="padding-top:44px"><div class="wrap">
   <div class="eyebrow">Interactive · model estimate</div>
   <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">Pitch Design Lab</h1>
-  <p class="muted" style="max-width:820px">Pick a Royals pitch, then move the sliders to see how the Stuff+ model grades a changed shape. The model runs in your browser: it is this project's xgboost Stuff+ model (shape only, no location, no results), exported tree by tree from R. Each slider shifts all of his real pitches of that type (up to 150 sampled pitches) by the same amount, and the grade is the average prediction. These are <b>model estimates</b>, not promises of real-world results.</p>
+  <p class="muted" style="max-width:820px">Pick a pitcher's pitch (any club; Royals by default), then move the sliders to see how the Stuff+ model grades a changed shape. The model runs in your browser: it is this project's xgboost Stuff+ model (shape only, no location, no results), exported tree by tree from R. Each slider shifts all of his real pitches of that type (up to 100 sampled pitches from his full season) by the same amount, and the grade is the average prediction. These are <b>model estimates</b>, not promises of real-world results.</p>
+  <div data-teambar="Every pitcher-pitch with 50+ pitches for the club (pitcher 100+ for the club). Comparables come from all of MLB."></div>
   <div class="controls">
     <label class="ctl">Pitcher<select id="lpick"></select></label>
     <div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Pitch</div><div class="pill" id="lpitch"></div></div>

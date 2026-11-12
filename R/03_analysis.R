@@ -11,7 +11,6 @@ meta <- q("SELECT min(game_date) first_day, max(game_date) last_day, count(*) n_
                   count(DISTINCT game_pk) n_games, count(*) FILTER (WHERE is_royals) n_royals,
                   count(DISTINCT pitcher) FILTER (WHERE is_royals) n_royals_pitchers
            FROM pitch_features")
-meta[, built := format(Sys.time(), "%Y-%m-%d")]
 
 # ---------- 1. Location-adjusted VAA (four-seamers) --------------------------------------
 ff <- q("SELECT pitcher, player_name, is_royals, vaa, plate_z_norm, release_pos_z, release_extension,

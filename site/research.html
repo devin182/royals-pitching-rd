@@ -1,21 +1,21 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Research · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
-<meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
+<meta name="description" content="Independent pitching analytics portfolio: season-long Statcast tracking of 2026 MLB pitching staffs (all 30 clubs; Royals featured) with DuckDB SQL, R and xgboost.">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
-<link rel="stylesheet" href="assets/style.css?v=fa91b10b81">
-<script>window.DATA_V="8e8686eb20";</script><script src="assets/plotly.min.js?v=72409fd95b" defer></script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=355ccf4e85" defer></script>
+<link rel="stylesheet" href="assets/style.css?v=8bdbd48701">
+<script>window.DATA_V="51b8b68e91";</script><script src="assets/plotly.min.js?v=72409fd95b" defer></script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=02a2f47ee1" defer></script>
 </head><body>
 <nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="" width="28" height="28">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
-<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="season.html">Season</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
 <section style="padding-top:44px"><div class="wrap">
   <div class="eyebrow">Research write-up</div>
-  <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">2026 Royals pitching: what the pitches say</h1>
+  <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">2026 Royals pitching: what the pitches said, all season</h1>
   <p class="muted" style="max-width:800px">Data: every 2026 regular-season MLB pitch from Baseball Savant (<span data-meta="n_pitches"></span> pitches, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>), including <span data-meta="n_royals"></span> by Royals pitchers. League-wide data is the baseline for every Royals number. Three rules throughout: show sample sizes and shrink small ones, judge process (whiffs, chases, expected contact) rather than outcomes like ERA, and put movement in context (fastball gaps, arm angle, VAA).</p>
-  <div class="toc"><a href="#stuff">1 · Stuff+ model</a><a href="#vaa">2 · Approach angle</a><a href="#location">3 · Location &amp; command</a><a href="#tunnel">4 · Tunneling</a><a href="#counts">5 · Count leverage</a><a href="#fatigue">6 · Fatigue</a><a href="#recs">7 · Coach recommendations</a></div>
+  <div class="toc"><a href="#stuff">1 · Stuff+ model</a><a href="#vaa">2 · Approach angle</a><a href="#location">3 · Location &amp; command</a><a href="#tunnel">4 · Tunneling</a><a href="#counts">5 · Count leverage</a><a href="#fatigue">6 · Fatigue</a><a href="#recs">7 · Coach recommendations</a><a href="#league">8 · All 30 staffs</a></div>
 </div></section>
 
 <section id="stuff"><div class="wrap">
@@ -117,9 +117,32 @@
   </div>
   <div class="callout" style="margin-top:26px"><b>What I'd do next with club data:</b> confirm these with pitcher-level biomechanics and pitch-design notes, check catcher framing and the opposing lineups behind the samples, and talk to the pitcher about what he's trying to do. A recommendation that fights his plan or his feel won't stick.</div>
 </div></section>
+<section id="league" class="alt"><div class="wrap">
+  <h2>8 · All 30 staffs: where does <span data-team-name>the Royals</span> rank?</h2>
+  <div data-teambar="Sections 1–7 are the featured Royals study. This table covers every club; pick one to highlight it (it also sets the team on the Explorer, Season Tracker and the other tools)."></div>
+  <p class="muted" style="max-width:840px">Full 2026 regular season, every pitch thrown by each club's pitchers. Click a column to sort. Ranks (#) run from the highest value, which is the pitcher-friendly end for every column (RV/100 is the pitcher's view, + is good).</p>
+  <div class="tblwrap"><table class="tbl" id="lgtbl"></table></div>
+  <p class="caption" id="lgcap"></p>
+</div></section>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  const cols=[['team','Team'],['pitches','Pitches'],['pitchers','Pitchers'],['whiff','Whiff / swing'],['csw','CSW'],['chase','Chase'],['ff_velo','4-seam mph'],['stuff','Staff Stuff+'],['rv100','RV/100']];
+  const f={pitches:nFmt,pitchers:x=>x,whiff:x=>pct(x,1),csw:x=>pct(x,1),chase:x=>pct(x,1),ff_velo:x=>fmt(x,1),stuff:x=>fmt(x,1),rv100:x=>sgn(x,2)};
+  let key='whiff';
+  const draw=()=>{ const T=[...TEAMS.teams]; T.sort((a,b)=>key==='team'?a.team.localeCompare(b.team):(b[key]-a[key]));
+    const rk=k=>{ const s=[...TEAMS.teams].sort((a,b)=>b[k]-a[k]); return t=>s.findIndex(x=>x.team===t)+1; };
+    const R={}; ['whiff','csw','chase','ff_velo','stuff','rv100'].forEach(k=>R[k]=rk(k));
+    document.getElementById('lgtbl').innerHTML=`<thead><tr>${cols.map(([k,l])=>`<th style="cursor:pointer" data-k="${k}">${l}${k===key?' ▾':''}</th>`).join('')}</tr></thead><tbody>`+
+      T.map(t=>`<tr class="${t.team===CUR_TEAM?'hl':''}"><td><span style="color:${t.color}">●</span> ${t.team} <span class="muted">${t.name}</span></td>`+
+        cols.slice(1).map(([k])=>`<td>${f[k](t[k])}${R[k]?` <span class="muted" style="font-size:.78em">#${R[k](t.team)}</span>`:''}</td>`).join('')+'</tr>').join('')+'</tbody>';
+    document.querySelectorAll('#lgtbl th').forEach(th=>th.onclick=()=>{ key=th.dataset.k; draw(); });
+    const me=teamInfo(); document.getElementById('lgcap').textContent=`${me.name}: #${R.whiff(me.team)} in whiff rate, #${R.csw(me.team)} in CSW, #${R.chase(me.team)} in chase, #${R.ff_velo(me.team)} in four-seam velocity, #${R.stuff(me.team)} in staff Stuff+ and #${R.rv100(me.team)} in run value per 100 pitches, out of 30. Staff Stuff+ is the pitch-weighted average of this project's model. Swings per team: ${nFmt(Math.min(...TEAMS.teams.map(t=>t.swings)))} to ${nFmt(Math.max(...TEAMS.teams.map(t=>t.swings)))}, so the 95% interval on a team whiff rate is at most ±${fmt(100*Math.max(...TEAMS.teams.map(t=>1.96*Math.sqrt(t.whiff*(1-t.whiff)/t.swings))),1)} pts.`; };
+  teamsReady.then(draw); document.addEventListener('teamchange',draw);
+});
+</script>
 <script src="assets/research.js?v=83ad737f18" defer></script>
 <footer><div class="wrap">
 <p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
-<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API.
 Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> (<a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
 </div></footer></body></html>

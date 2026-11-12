@@ -12,6 +12,7 @@ SRC, OUT = ROOT / "site_src", ROOT / "site"
 PAGES = [
     ("index.html", "Home"),
     ("explorer.html", "Pitcher Explorer"),
+    ("season.html", "Season Tracker"),
     ("research.html", "Research"),
     ("sequencing.html", "Sequencing"),
     ("lab.html", "Design Lab"),
@@ -22,12 +23,14 @@ PAGES = [
 ]
 GITHUB = "https://github.com/devin182/royals-pitching-rd"
 # Plotly (1.3 MB) is only loaded by the pages that draw Plotly charts
-PLOTLY_PAGES = {"explorer.html", "research.html"}
+PLOTLY_PAGES = {"explorer.html", "research.html", "season.html"}
+# built like the others but linked from pages instead of the nav
+EXTRA = [("card.html", "Coach Card")]
 PLOTLY_TAG = '<script src="assets/plotly.min.js" defer></script>'
 HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title} · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
-<meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
+<meta name="description" content="Independent pitching analytics portfolio: season-long Statcast tracking of 2026 MLB pitching staffs (all 30 clubs; Royals featured) with DuckDB SQL, R and xgboost.">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,7 +43,7 @@ HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 """
 FOOT = """<footer><div class="wrap">
 <p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
-<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API.
 Code: <a href="{gh}">GitHub repo</a> (<a href="{gh}/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
 </div></footer></body></html>"""
 code = OUT / "code"
@@ -51,8 +54,8 @@ for f in list((ROOT / "sql").glob("*.sql")) + list((ROOT / "R").glob("*.R")) + l
 # Pages built here from site_src/; tunnel.html and gameplan.html are self-contained pages copied in from
 # tunnel/ and gameplan/ -- for those we only rewrite the nav list (and add the CI badge) so every page matches.
 NAV = [(n, t) for n, t in PAGES if (SRC / n).exists() or (OUT / n).exists()]
-# short nav labels so nine entries fit on one line at desktop widths
-SHORT = {"Pitcher Explorer": "Explorer", "Tunnel Viewer": "Tunnel", "Methods & Code": "Methods"}
+# short nav labels so ten entries fit on one line at desktop widths
+SHORT = {"Pitcher Explorer": "Explorer", "Season Tracker": "Season", "Tunnel Viewer": "Tunnel", "Methods & Code": "Methods"}
 links = "".join(f'<li><a href="{n}">{SHORT.get(t, t)}</a></li>' for n, t in NAV)
 BADGE = f' (<a href="{GITHUB}/actions/workflows/ci.yml">CI status</a>)'
 TUNNEL_NAV = (
@@ -87,7 +90,7 @@ if EXP.exists():
 # with a stale cached script. Content hashes (not timestamps) keep the build reproducible for the CI sync check.
 DATA_V = short_hash(*sorted((OUT / "data").rglob("*.json")), *sorted((OUT / "code").glob("*.txt")))
 
-for name, title in NAV:
+for name, title in NAV + [(n, t) for n, t in EXTRA if (SRC / n).exists()]:
     if name.startswith("tunnel/"):
         html = (OUT / name).read_text()
         html = re.sub(
@@ -139,13 +142,12 @@ def bust(html, base):
 
 tun = OUT / "tunnel"
 if (tun / "app.js").exists():
-    js = re.sub(
-        r'fetch\("tunnel\.json(\?v=[0-9a-f]+)?"\)',
-        f'fetch("tunnel.json?v={short_hash(tun / "tunnel.json")}")',
-        (tun / "app.js").read_text(),
-    )
+    teams_v = hashlib.sha1(
+        b"".join(f.read_bytes() for f in sorted((tun / "teams").glob("*.json"))) + (OUT / "data" / "teams.json").read_bytes()
+    ).hexdigest()[:10]
+    js = re.sub(r'const TUNNEL_V = "[0-9a-f]*";', f'const TUNNEL_V = "{teams_v}";', (tun / "app.js").read_text())
     (tun / "app.js").write_text(js)
-for name, _ in NAV:
+for name, _ in NAV + [(n, t) for n, t in EXTRA if (SRC / n).exists()]:
     page = OUT / name
     page.write_text(bust(page.read_text(), page.parent))
 if (OUT / "gameplan_print.html").exists():

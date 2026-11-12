@@ -1,0 +1,123 @@
+{
+ "_note": "Team abbreviations as used by Statcast pitch_team. Colors are used only as a small accent (no logos or marks).",
+ "ATH": {
+  "name": "Athletics",
+  "color": "#2E8B57"
+ },
+ "ATL": {
+  "name": "Atlanta Braves",
+  "color": "#CE1141"
+ },
+ "AZ": {
+  "name": "Arizona Diamondbacks",
+  "color": "#A71930"
+ },
+ "BAL": {
+  "name": "Baltimore Orioles",
+  "color": "#DF4601"
+ },
+ "BOS": {
+  "name": "Boston Red Sox",
+  "color": "#BD3039"
+ },
+ "CHC": {
+  "name": "Chicago Cubs",
+  "color": "#4A78C9"
+ },
+ "CIN": {
+  "name": "Cincinnati Reds",
+  "color": "#C6011F"
+ },
+ "CLE": {
+  "name": "Cleveland Guardians",
+  "color": "#E50022"
+ },
+ "COL": {
+  "name": "Colorado Rockies",
+  "color": "#8A6FC9"
+ },
+ "CWS": {
+  "name": "Chicago White Sox",
+  "color": "#C4CED4"
+ },
+ "DET": {
+  "name": "Detroit Tigers",
+  "color": "#FA4616"
+ },
+ "HOU": {
+  "name": "Houston Astros",
+  "color": "#EB6E1F"
+ },
+ "KC": {
+  "name": "Kansas City Royals",
+  "color": "#7AB2DD"
+ },
+ "LAA": {
+  "name": "Los Angeles Angels",
+  "color": "#BA0021"
+ },
+ "LAD": {
+  "name": "Los Angeles Dodgers",
+  "color": "#4A90E2"
+ },
+ "MIA": {
+  "name": "Miami Marlins",
+  "color": "#00A3E0"
+ },
+ "MIL": {
+  "name": "Milwaukee Brewers",
+  "color": "#FFC52F"
+ },
+ "MIN": {
+  "name": "Minnesota Twins",
+  "color": "#D31145"
+ },
+ "NYM": {
+  "name": "New York Mets",
+  "color": "#FF5910"
+ },
+ "NYY": {
+  "name": "New York Yankees",
+  "color": "#C4CED3"
+ },
+ "PHI": {
+  "name": "Philadelphia Phillies",
+  "color": "#E81828"
+ },
+ "PIT": {
+  "name": "Pittsburgh Pirates",
+  "color": "#FDB827"
+ },
+ "SD": {
+  "name": "San Diego Padres",
+  "color": "#FFC425"
+ },
+ "SEA": {
+  "name": "Seattle Mariners",
+  "color": "#2E9C9C"
+ },
+ "SF": {
+  "name": "San Francisco Giants",
+  "color": "#FD5A1E"
+ },
+ "STL": {
+  "name": "St. Louis Cardinals",
+  "color": "#C41E3A"
+ },
+ "TB": {
+  "name": "Tampa Bay Rays",
+  "color": "#8FBCE6"
+ },
+ "TEX": {
+  "name": "Texas Rangers",
+  "color": "#C0111F"
+ },
+ "TOR": {
+  "name": "Toronto Blue Jays",
+  "color": "#4A8FE7"
+ },
+ "WSH": {
+  "name": "Washington Nationals",
+  "color": "#AB0003"
+ }
+}

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Pitch tunnel viewer · Devin Jenkinson · Pitching R&amp;D</title>
-  <meta name="description" content="3D catcher's-eye view of average 2026 Royals pitch trajectories, with y-matched separation at the 23.8 ft commit point and at the plate.">
+  <meta name="description" content="3D catcher's-eye view of average 2026 MLB pitch trajectories, all 30 teams, with y-matched separation at the 23.8 ft commit point and at the plate.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css?v=33f395f29e">
   <style>
@@ -26,12 +26,15 @@
   </script>
 </head>
 <body>
-  <header class="nav"><!--site-nav--><div class="nav-inner"><a class="brand" href="../index.html">Devin Jenkinson <span>· Pitching R&amp;D</span></a><ul class="site-links"><li><a href="../index.html">Home</a></li><li><a href="../explorer.html">Explorer</a></li><li><a href="../research.html">Research</a></li><li><a href="../sequencing.html">Sequencing</a></li><li><a href="../lab.html">Design Lab</a></li><li><a href="../tunnel/index.html" class=on>Tunnel</a></li><li><a href="../gameplan.html">Game Plan</a></li><li><a href="../reports.html">Reports</a></li><li><a href="../methods.html">Methods</a></li></ul></div><!--/site-nav--></header>
+  <header class="nav"><!--site-nav--><div class="nav-inner"><a class="brand" href="../index.html">Devin Jenkinson <span>· Pitching R&amp;D</span></a><ul class="site-links"><li><a href="../index.html">Home</a></li><li><a href="../explorer.html">Explorer</a></li><li><a href="../season.html">Season</a></li><li><a href="../research.html">Research</a></li><li><a href="../sequencing.html">Sequencing</a></li><li><a href="../lab.html">Design Lab</a></li><li><a href="../tunnel/index.html" class=on>Tunnel</a></li><li><a href="../gameplan.html">Game Plan</a></li><li><a href="../reports.html">Reports</a></li><li><a href="../methods.html">Methods</a></li></ul></div><!--/site-nav--></header>
   <main>
     <h1>Pitch tunnel viewer</h1>
-    <p class="lead">Compare any two pitch types for a 2026 Royals pitcher. Paths are the average Statcast trajectory of each type. The gold frame and rings mark the commit point, 23.8 ft in front of the plate (about 167 ms before it arrives). Drag to orbit; pick a camera preset to fly back.</p>
+    <p class="lead">Compare any two pitch types for any 2026 MLB pitcher (pick the team, then the pitcher; Royals by default; pitch types with 30+ pitches for that team). Paths are the average Statcast trajectory of each type. The gold frame and rings mark the commit point, 23.8 ft in front of the plate (about 167 ms before it arrives). Drag to orbit; pick a camera preset to fly back.</p>
 
     <div class="toolbar">
+      <label class="ctl"><span><i class="swatch team" id="teamDot"></i>Team</span>
+        <select id="team" aria-label="Team"></select>
+      </label>
       <label class="ctl grow">Pitcher
         <select id="pitcher"></select>
       </label>
@@ -110,6 +113,6 @@
     Team abbreviations and player names are used only to describe public data.
     Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (2026 regular season). Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> (<a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a>
   </footer>
-  <script type="module" src="app.js?v=ba8c315dbb"></script>
+  <script type="module" src="app.js?v=9f0ca27f2e"></script>
 </body>
 </html>

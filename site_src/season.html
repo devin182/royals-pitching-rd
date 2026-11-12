@@ -1,0 +1,25 @@
+<section style="padding-top:44px"><div class="wrap">
+  <div class="eyebrow">2026 season · Mar 25 – Sep 27</div>
+  <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">Season Tracker</h1>
+  <div data-teambar></div>
+  <p class="muted" style="max-width:840px">How the <b data-team-name>Royals</b> staff moved month by month through the 2026 regular season, by real game date. Every point is one calendar month of pitches (March's six days are folded into April). Dashed lines are the MLB average for the same month, so a league-wide drift such as summer velocity doesn't read as a team change. Rates carry 95% intervals and n.</p>
+  <div class="kpis" id="skpi"></div>
+  <h2 style="margin-top:30px">Staff view</h2>
+  <div class="grid g2">
+    <div><div id="s_whiff" class="chart"></div><p class="caption" id="c_whiff"></p></div>
+    <div><div id="s_velo" class="chart"></div><p class="caption" id="c_velo"></p></div>
+    <div><div id="s_csw" class="chart"></div><p class="caption">CSW = called + swinging strikes per pitch; chase = swings per out-of-zone pitch. Solid = team, dashed = MLB. Bars are 95% Wilson intervals.</p></div>
+    <div><div id="s_stuff" class="chart"></div><p class="caption">Staff Stuff+ = pitch-weighted average of this project's shape-only model, graded per pitch and averaged within the month (100 = MLB average for the season). It moves when the mix of arms and shapes changes, not with results.</p></div>
+  </div>
+  <div style="margin-top:14px"><div id="s_mix" class="chart"></div><p class="caption">Share of the staff's pitches by type each month (pitch types under 2% for the season are grouped as "Other").</p></div>
+  <h2 style="margin-top:34px">Pitcher view</h2>
+  <div class="controls">
+    <label class="ctl">Pitcher<select id="spick"></select></label>
+    <div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Track</div><div class="pill" id="smet"><button data-m="velo" class="on">Velocity</button><button data-m="stuff">Stuff+</button><button data-m="whiff">Whiff / swing</button><button data-m="usage">Usage</button></div></div>
+  </div>
+  <div id="p_chart" class="chart"></div>
+  <p class="caption" id="p_cap"></p>
+  <div class="tblwrap"><table class="tbl" id="p_tbl"></table></div>
+  <div class="callout" style="margin-top:22px"><b>How to read it.</b> Monthly samples are small for one pitcher: a reliever may throw 60 pitches in a month. Velocity is plotted when a pitch type has 10+ pitches that month (with a 95% interval for the mean), Stuff+ with 20+, and whiff rate only with 50+ swings, the same rule as the rest of the site. Months with less show as gaps. Source: Baseball Savant Statcast pitch-level data, 2026 regular season, aggregated by <a href="code/07_teams.R.txt">R/07_teams.R</a>.</div>
+</div></section>
+<script src="assets/season.js"></script>

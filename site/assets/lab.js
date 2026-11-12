@@ -1,4 +1,4 @@
-// Pitch Design Lab: evaluates the exported xgboost Stuff+ trees (assets/xgb.js) on a Royals pitcher's real pitches
+// Pitch Design Lab: evaluates the exported xgboost Stuff+ trees (assets/xgb.js) on any MLB pitcher's real pitches (team index: data/lab/teams/<TEAM>.json)
 // after applying slider shifts. Data from R/05_design_lab.R (site/data/lab/).
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -105,7 +105,7 @@
     const dist = (i) => Math.sqrt(COMP_F.reduce((s, f) => s + (C[f][i] == null ? 0 : ((C[f][i] - target[f]) / sd[f]) ** 2), 0));
     const near = ix.map((i) => [i, dist(i)]).sort((a, b) => a[1] - b[1]).slice(0, 6);
     $("comps").innerHTML = `<thead><tr><th>Pitcher</th><th>T</th><th>#</th><th>Velo</th><th>IVB</th><th>HB</th><th>Spin</th><th>Ext</th><th>Stuff+</th></tr></thead><tbody>` +
-      near.map(([i]) => `<tr><td>${C.name[i]}${C.kc[i] ? ' <span class="muted">(KC)</span>' : ""}</td><td>${C.throws[i]}</td><td>${C.n[i]}</td><td>${fmt(C.release_speed[i])}</td>
+      near.map(([i]) => `<tr><td>${C.name[i]}${C.team[i] ? ` <span class="muted">(${C.team[i]})</span>` : ""}</td><td>${C.throws[i]}</td><td>${C.n[i]}</td><td>${fmt(C.release_speed[i])}</td>
       <td>${fmt(C.ivb[i])}</td><td>${fmt(C.hb_arm[i])}</td><td>${fmt(C.release_spin_rate[i], 0)}</td><td>${fmt(C.release_extension[i])}</td>
       <td><span class="sp" style="background:${stuffColor(C.stuff[i])}">${C.stuff[i]}</span></td></tr>`).join("") + "</tbody>";
     // movement map (SVG): HB arm side on x, IVB on y
@@ -134,7 +134,7 @@
       const p = score(adjusted());
       base = { s0: XGB.stuffPlus(mean(p), M.mu, M.sd), hb: mean(ROWS[fi("hb_arm")]), ivb: mean(ROWS[fi("ivb")]), means: {} };
       SL.forEach((s) => { base.means[s.f] = mean(ROWS[fi(s.f)].filter((z) => z != null)); });
-      $("lnote").innerHTML = `Model grade for ${row.name.split(", ").reverse().join(" ")}'s ${NAMES[row.pitch_type] || row.pitch_type} on ${p.length} sampled pitches (of ${row.n}). Published Stuff+: <b>${row.stuff_pub}</b>.${row.primary_fb ? " This is his primary fastball, so off-speed gaps stay fixed." : ""}`;
+      $("lnote").innerHTML = `Model grade for ${row.name.split(", ").reverse().join(" ")}'s ${NAMES[row.pitch_type] || row.pitch_type} on ${p.length} sampled pitches (of his ${row.n_all} this season; ${row.n} for ${CUR_TEAM}). Published Stuff+: <b>${row.stuff_pub}</b>.${row.primary_fb ? " This is his primary fastball, so off-speed gaps stay fixed." : ""}`;
       update();
     });
   }
@@ -145,19 +145,26 @@
     const want = new URLSearchParams(location.search).get("pitch");
     pickPitch(rows.find((r) => r.pitch_type === want) || rows[0]);
   }
-  document.addEventListener("DOMContentLoaded", () => {
-    Promise.all(["model", "royals", "comps"].map((n) => getJSON(`data/lab/${n}.json`))).then(([m, idx, c]) => {
-      M = m; IDX = idx; COMPS = c;
-      const a = M.agreement_with_published;
-      $("agree").textContent = `across ${a.n_types} MLB pitch types with 100+ pitches, correlation ${a.cor.toFixed(3)}, ${Math.round(100 * a.share_within_1)}% within 1 point, mean gap ${a.mean_abs_diff.toFixed(1)} points`;
+  function loadTeam(first) {
+    return getJSON(`data/lab/teams/${CUR_TEAM}.json`).then((idx) => {
+      IDX = idx;
       const ps = [...new Map(IDX.map((r) => [r.pitcher, r.name])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
       $("lpick").innerHTML = ps.map(([id, n]) => `<option value="${id}">${n}</option>`).join("");
-      const want = new URLSearchParams(location.search).get("p");
-      $("lpick").value = want && ps.some((p) => String(p[0]) === want) ? want : String(ps.find((p) => p[1] === "Wacha, Michael")?.[0] || ps[0][0]);
+      const want = first ? new URLSearchParams(location.search).get("p") : null;
+      $("lpick").value = want && ps.some((p) => String(p[0]) === want) ? want : String(ps.find((p) => p[1] === "Wacha, Michael")?.[0] || IDX[0].pitcher);
+      pickPitcher($("lpick").value);
+    });
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+    Promise.all(["model", "comps"].map((n) => getJSON(`data/lab/${n}.json`))).then(([m, c]) => {
+      M = m; COMPS = c;
+      const a = M.agreement_with_published;
+      $("agree").textContent = `across ${a.n_types} MLB pitch types with 100+ pitches, correlation ${a.cor.toFixed(3)}, ${Math.round(100 * a.share_within_1)}% within 1 point, mean gap ${a.mean_abs_diff.toFixed(1)} points`;
       sliderUI();
       $("lpick").addEventListener("change", (e) => pickPitcher(e.target.value));
       $("lreset").addEventListener("click", () => { resetSliders(); update(); });
-      pickPitcher($("lpick").value);
+      teamsReady.then(() => loadTeam(true));
+      document.addEventListener("teamchange", () => loadTeam(false));
     });
   });
 })();

@@ -66,9 +66,11 @@ jobs:
       - name: No visible TODO text in built pages
         run: |
           ! grep -n "TODO" site/*.html
-      - name: Data files are valid JSON
+      - name: Data files are valid JSON (every file under site/data and site/tunnel)
         run: |
-          for f in site/data/*.json site/data/lab/*.json; do python3 -m json.tool "$f" > /dev/null || exit 1; done
+          python3 -c "import json,pathlib; fs=[*pathlib.Path('site/data').rglob('*.json'), *pathlib.Path('site/tunnel').rglob('*.json')]; [json.loads(f.read_text()) for f in fs]; print(len(fs), 'JSON files ok')"
+      - name: All 30 teams have complete, consistent data (tests/check_teams.py)
+        run: python3 tests/check_teams.py
 
   js:
     name: JS Stuff+ evaluator matches R (design lab)

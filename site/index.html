@@ -1,21 +1,21 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Home · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
-<meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
+<meta name="description" content="Independent pitching analytics portfolio: season-long Statcast tracking of 2026 MLB pitching staffs (all 30 clubs; Royals featured) with DuckDB SQL, R and xgboost.">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
-<link rel="stylesheet" href="assets/style.css?v=fa91b10b81">
-<script>window.DATA_V="8e8686eb20";</script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=355ccf4e85" defer></script>
+<link rel="stylesheet" href="assets/style.css?v=8bdbd48701">
+<script>window.DATA_V="51b8b68e91";</script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=02a2f47ee1" defer></script>
 </head><body>
 <nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="" width="28" height="28">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
-<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="season.html">Season</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
 <header class="hero"><div class="wrap">
-  <div class="eyebrow">Pitching R&amp;D portfolio · 2026 season</div>
+  <div class="eyebrow">Pitching R&amp;D portfolio · 2026 season, Mar 25 – Sep 27</div>
   <h1>Turning every pitch into<br><span class="accent">one clear next step.</span></h1>
-  <p class="lead">An end-to-end look at the 2026 Royals pitching staff: Statcast pitch-level data, a SQL pipeline in DuckDB, models in R, interactive reports, and a daily one-page report a coach can read in two minutes.</p>
-  <div class="btns"><a class="btn primary" href="explorer.html">Open the Pitcher Explorer</a><a class="btn" href="research.html">Read the research</a><a class="btn" href="reports.html">See the daily report</a></div>
+  <p class="lead">Season-long pitching coverage of the 2026 MLB regular season, opening day to the final weekend, for all 30 staffs, with the Royals as the featured study. Every pitch of Statcast data runs through a DuckDB SQL pipeline and models in R, and comes out as month-by-month trends, interactive tools, and a one-page report a coach can read in two minutes.</p>
+  <div class="btns"><a class="btn primary" href="explorer.html">Open the Pitcher Explorer</a><a class="btn" href="season.html">Season Tracker</a><a class="btn" href="research.html">Read the research</a><a class="btn" href="reports.html">See the daily report</a></div>
   <p class="muted" style="margin-top:12px;font-size:.9rem"><a href="video/walkthrough.mp4">▶ Watch the 2-minute narrated site tour</a> <span class="muted">(MP4, 720p, 11 MB, captions below)</span></p>
   <video class="tour" controls preload="none" width="640" height="360" poster="video/poster.jpg" aria-label="Narrated tour of the site">
     <source src="video/walkthrough.mp4" type="video/mp4">
@@ -25,7 +25,7 @@
     <div class="kpi"><b data-meta="n_pitches">712,014</b><span>MLB pitches modeled</span></div>
     <div class="kpi"><b data-meta="n_games">2,429</b><span>regular-season games</span></div>
     <div class="kpi"><b data-meta="n_royals">23,644</b><span>pitches by Royals pitchers</span></div>
-    <div class="kpi"><b>20</b><span>pitchers with 300+ pitches profiled</span></div>
+    <div class="kpi"><b>588</b><span>pitchers with 300+ pitches for a club, all 30 teams</span></div>
   </div>
 </div></header>
 
@@ -33,6 +33,7 @@
   <h2>What's inside</h2>
   <p class="muted" style="max-width:760px">Each section answers a question a pitching group asks, then ends with something a coach or pitcher can use. Every number on this site is computed from public Baseball Savant data. Nothing is hand-entered.</p>
   <div class="grid g3" style="margin-top:22px">
+    <div class="card"><span class="tag">Season Tracker · 30 clubs</span><h3>The season, month by month</h3><p>How each staff's whiff rate, CSW, chase rate, four-seam velocity, Stuff+ and pitch mix moved from April to September, by real game date and against the MLB average for the same month, plus the same view for every pitcher.</p><a href="season.html">Open the tracker →</a></div>
     <div class="card"><span class="tag">xgboost · R</span><h3>A transparent Stuff+ model</h3><p>Grades every pitch on physical traits alone: velocity, movement, spin, release, extension, arm angle, and gaps from the pitcher's fastball. It's validated on late-season games it never saw, and early-season Stuff+ predicted late-season run value better than early-season results did.</p><a href="research.html#stuff">Model &amp; validation →</a></div>
     <div class="card"><span class="tag">DuckDB SQL · R Markdown</span><h3>A daily pitching report</h3><p>One command rebuilds a one-page report for the last game: each pitcher's velocity and shape vs his own baseline, alert flags, workload, and an attack / avoid / put-away sheet for the opposing lineup.</p><a href="reports.html">Daily report &amp; pitcher cards →</a></div>
     <div class="card"><span class="tag">Coach-facing</span><h3>Four recommendations</h3><p>Specific, data-backed adjustments for Daniel Lynch IV, Seth Lugo, Noah Cameron and Steven Cruz, phrased the way I'd bring them to a pitching coach, with sample sizes and shrinkage shown.</p><a href="research.html#recs">Recommendations →</a></div>
@@ -70,6 +71,6 @@
 </div></section>
 <footer><div class="wrap">
 <p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
-<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API.
 Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> (<a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
 </div></footer></body></html>

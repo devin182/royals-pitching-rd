@@ -11,7 +11,7 @@ set.seed(2026)
 con <- dbConnect(duckdb(), dbdir = Sys.getenv("DB_PATH", "data/statcast.duckdb"), read_only = TRUE)
 d <- as.data.table(dbGetQuery(con, "
   WITH p AS (
-    SELECT game_pk, game_date, at_bat_number, pitch_number, pitcher, player_name, is_royals, p_throws, stand,
+    SELECT game_pk, game_date, at_bat_number, pitch_number, pitcher, player_name, is_royals, pitch_team, p_throws, stand,
            balls, strikes, description, is_swing, is_whiff, is_called_strike, xrv,
            CASE WHEN pitch_type IN ('CU','KC','SV','CS') THEN 'CU' WHEN pitch_type IN ('FS','FO') THEN 'FS'
                 WHEN pitch_type IN ('FF','SI','FC','SL','ST','CH') THEN pitch_type END AS pt,
@@ -155,4 +155,10 @@ seq_out <- list(types = PT, locs = LOC, results = RES, split_date = as.character
                 hand_mix = hand_mix[, .(same_hand, rhp, w = round(w, 4))], grid = grid, base_grid = base_grid,
                 league = emp(d), royals = emp(roy), findings = findings)
 write_json(seq_out, "site/data/sequencing.json", auto_unbox = TRUE, digits = NA, na = "null")
-cat("contexts:", length(grid), "\n")
+# per-team empirical cells for the team view (lazy-loaded: site/data/seq/<TEAM>.json)
+unlink("site/data/seq", recursive = TRUE); dir.create("site/data/seq", showWarnings = FALSE)
+for (t in sort(unique(d$pitch_team))) {
+  write_json(list(team = t, n = sum(d$pitch_team == t), cells = emp(d[pitch_team == t])), sprintf("site/data/seq/%s.json", t),
+             auto_unbox = TRUE, digits = NA, na = "null")
+}
+cat("contexts:", length(grid), " team files:", uniqueN(d$pitch_team), "\n")

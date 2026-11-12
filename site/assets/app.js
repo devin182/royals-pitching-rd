@@ -35,10 +35,50 @@ document.addEventListener('DOMContentLoaded', () => {
   if(b) b.addEventListener('click',()=>u.classList.toggle('open'));
   const here=location.pathname.split('/').pop()||'index.html';
   document.querySelectorAll('.nav li a').forEach(a=>{ if(a.getAttribute('href')===here) a.classList.add('on'); });
+  initTeamBar();
   getJSON('data/meta.json').then(m=>{ const x=m.meta[0]||m.meta;
     document.querySelectorAll('[data-meta]').forEach(el=>{ const k=el.dataset.meta; let v=x[k];
       if(typeof v==='number') v=v.toLocaleString(); el.textContent=v; }); }).catch(()=>{});
 });
+
+// columnar JSON ({col: [...]}) -> array of row objects; jsonlite writes a 1-row column as a scalar, so wrap those
+const asArr = v => Array.isArray(v) ? v : (v==null ? [] : [v]);
+function colsToRows(c){ if(!c) return []; const k=Object.keys(c), n=asArr(c[k[0]]).length;
+  return Array.from({length:n},(_,i)=>{ const o={}; k.forEach(x=>{ o[x]=asArr(c[x])[i]; }); return o; }); }
+
+// ---- team selector: ?team=NYY in the URL, remembered in localStorage, Royals (KC) by default --------------
+// Pages opt in with <div data-teambar></div>; they listen for the 'teamchange' event and read CUR_TEAM.
+const teamOk = t => /^[A-Z]{2,3}$/.test(t||'');
+let CUR_TEAM = (()=>{ let t=(new URLSearchParams(location.search).get('team')||'').toUpperCase();
+  if(!teamOk(t)){ try{ t=localStorage.getItem('team'); }catch(e){ t=null; } } return teamOk(t)?t:'KC'; })();
+let TEAMS = null;
+const teamsReady = getJSON('data/teams.json').then(t=>{ TEAMS=t; if(!t.teams.some(x=>x.team===CUR_TEAM)) CUR_TEAM=t.default; return t; });
+const teamInfo = (t=CUR_TEAM) => TEAMS && TEAMS.teams.find(x=>x.team===t);
+function setTeam(t, push=true){
+  if(!teamInfo(t)) return; CUR_TEAM=t;
+  try{ localStorage.setItem('team',t); }catch(e){}
+  if(push){ const u=new URL(location.href); u.searchParams.set('team',t); u.searchParams.delete('p'); history.replaceState(null,'',u); }
+  paintTeam(); document.dispatchEvent(new CustomEvent('teamchange',{detail:t}));
+}
+function paintTeam(){
+  const x=teamInfo(); if(!x) return;
+  document.documentElement.style.setProperty('--team', x.color);
+  document.querySelectorAll('[data-team-name]').forEach(e=>e.textContent=x.name);
+  document.querySelectorAll('[data-team-abbr]').forEach(e=>e.textContent=x.team);
+  document.querySelectorAll('select.teamsel').forEach(s=>{ s.value=x.team; });
+  // carry the team across the site's own links
+  document.querySelectorAll('a[data-team-link]').forEach(a=>{ const u=new URL(a.getAttribute('href'),location.href); u.searchParams.set('team',x.team); a.href=u.pathname.split('/').pop()+u.search+u.hash; });
+}
+function initTeamBar(){
+  const bars=document.querySelectorAll('[data-teambar]'); if(!bars.length) return;
+  teamsReady.then(t=>{
+    bars.forEach(b=>{ b.classList.add('teambar');
+      b.innerHTML=`<span class="tdot" aria-hidden="true"></span><label class="ctl">Team<select class="teamsel" aria-label="Team">${t.teams.map(x=>`<option value="${x.team}">${x.team} · ${x.name}</option>`).join('')}</select></label>`+
+        `<span class="muted tnote">${b.dataset.teambar||'All 30 clubs, 2026 regular season. Royals are the featured staff.'}</span>`;
+      b.querySelector('select').addEventListener('change',e=>setTeam(e.target.value)); });
+    paintTeam();
+  });
+}
 
 // ---- chart-polish helpers -------------------------------------------------
 const GOLD = '#C9A227';

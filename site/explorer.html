@@ -1,24 +1,25 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pitcher Explorer · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
-<meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
+<meta name="description" content="Independent pitching analytics portfolio: season-long Statcast tracking of 2026 MLB pitching staffs (all 30 clubs; Royals featured) with DuckDB SQL, R and xgboost.">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
-<link rel="stylesheet" href="assets/style.css?v=fa91b10b81">
-<script>window.DATA_V="8e8686eb20";</script><script src="assets/plotly.min.js?v=72409fd95b" defer></script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=355ccf4e85" defer></script>
+<link rel="stylesheet" href="assets/style.css?v=8bdbd48701">
+<script>window.DATA_V="51b8b68e91";</script><script src="assets/plotly.min.js?v=72409fd95b" defer></script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=02a2f47ee1" defer></script>
 </head><body>
 <nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="" width="28" height="28">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
-<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="season.html">Season</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
 <section style="padding-top:44px"><div class="wrap">
   <div class="eyebrow">Interactive</div>
   <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">Pitcher Explorer</h1>
-  <p class="muted" style="max-width:780px">Pick any Royals pitcher with 300+ pitches in 2026. Movement, release, location and count usage all come from his actual pitches. Movement is from the pitcher's arm side (+ = arm side) so righties and lefties read the same way. Charts use a random sample of up to 450 pitches; the table uses every pitch.</p>
+  <div data-teambar></div>
+  <p class="muted" style="max-width:780px">Pick any pitcher with 300+ pitches for the selected team across the 2026 season (Mar 25 – Sep 27). A pitcher traded mid-season is listed under each club with only the pitches he threw for it. Movement, release, location and count usage all come from his actual pitches. Movement is from the pitcher's arm side (+ = arm side) so righties and lefties read the same way. Charts use a random sample of up to 450 pitches; the table uses every pitch.</p>
   <div class="controls">
     <label class="ctl">Pitcher<select id="pick"></select></label>
     <div id="summary" class="muted" style="padding-bottom:9px"></div>
-    <a id="cardlink" class="btn" style="margin-left:auto" target="_blank">Printable pitcher card ↗</a>
+    <a id="cardlink" class="btn" style="margin-left:auto" target="_blank">Coach card ↗</a>
   </div>
   <div class="tblwrap"><table class="tbl" id="ars"></table></div>
   <p class="caption">Velo/Max in mph · Spin in rpm · IVB/HB in inches · Ext = extension (ft) · VAA = vertical approach angle (°) · Rel Δ = release-point offset from his primary fastball (inches, height / side) · Whiff = whiffs per swing, with its 95% Wilson interval · Chase = swing rate out of zone · CSW = called + swinging strikes per pitch · RV/100 = run value per 100 pitches, pitcher's view (+ is good) · Stuff+ = this project's shape-only model (100 = MLB average, see <a href="research.html#stuff">Research</a>).</p>
@@ -122,23 +123,31 @@ function render(){
   document.getElementById('ptpick').innerHTML=types.map(t=>`<button data-t="${t}" class="${t===PT?'on':''}">${t}</button>`).join('');
   document.querySelectorAll('#ptpick button').forEach(b=>b.onclick=()=>{PT=b.dataset.t;render();});
   heat(p);
-  document.getElementById('summary').textContent=`${p.throws==='R'?'RHP':'LHP'} · ${p.games} games · ${p.n.toLocaleString()} pitches`;
-  document.getElementById('cardlink').href=`reports/cards/${p.id}.html`;
+  document.getElementById('summary').textContent=`${CUR_TEAM} · ${p.throws==='R'?'RHP':'LHP'} · ${p.games} games (${p.starts} starts) · ${p.n.toLocaleString()} pitches · ${p.d0} to ${p.d1}`;
+  document.getElementById('cardlink').href=`card.html?team=${CUR_TEAM}&p=${p.id}`;
+}
+// team index (arsenal tables) from data/t/<TEAM>/index.json; the pitch sample, location grid and count usage
+// live in data/t/<TEAM>/p/<id>.json and load only when that pitcher is picked
+let REQ=0;
+function pick(i){ const p=DATA[i], t=CUR_TEAM, r=++REQ;
+  return getJSON(`data/t/${t}/p/${p.id}.json`).then(x=>{ if(r!==REQ) return;
+    CUR=Object.assign({}, p, {pitches:colsToRows(x.pitches), heat:colsToRows(x.heat), counts:x.counts}); render(); }); }
+function loadTeam(wantP){
+  return getJSON(`data/t/${CUR_TEAM}/index.json`).then(d=>{ DATA=d.pitchers; const sel=document.getElementById('pick');
+    sel.innerHTML=DATA.map((p,i)=>`<option value="${i}">${nice(p.name)} (${p.throws}HP, ${p.n.toLocaleString()} pitches)</option>`).join('');
+    const idx=Math.max(0,DATA.findIndex(p=>String(p.id)===String(wantP))); sel.value=idx; return pick(idx); });
 }
 document.addEventListener('DOMContentLoaded',()=>{
-  getJSON('data/explorer_index.json').then(d=>{ DATA=d; const sel=document.getElementById('pick');
-    sel.innerHTML=d.map((p,i)=>`<option value="${i}">${nice(p.name)} (${p.throws}HP, ${p.n.toLocaleString()} pitches)</option>`).join('');
-    const want=new URLSearchParams(location.search).get('p'); const idx=Math.max(0,d.findIndex(p=>String(p.id)===want));
-    // pitch sample + location grid live in data/explorer/<id>.json, loaded when the pitcher is picked
-    const pick=i=>getJSON(`data/explorer/${d[i].id}.json`).then(x=>{ CUR=Object.assign(d[i],x); render(); });
-    sel.value=idx; pick(idx); sel.onchange=()=>pick(sel.value);
-    document.querySelectorAll('#metric button').forEach(b=>b.onclick=()=>{MET=b.dataset.m;document.querySelectorAll('#metric button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
-    document.querySelectorAll('#side button').forEach(b=>b.onclick=()=>{SIDE=b.dataset.s;document.querySelectorAll('#side button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
-  });
+  const sel=document.getElementById('pick');
+  sel.onchange=()=>{ pick(sel.value); const u=new URL(location.href); u.searchParams.set('p',DATA[sel.value].id); history.replaceState(null,'',u); };
+  document.querySelectorAll('#metric button').forEach(b=>b.onclick=()=>{MET=b.dataset.m;document.querySelectorAll('#metric button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
+  document.querySelectorAll('#side button').forEach(b=>b.onclick=()=>{SIDE=b.dataset.s;document.querySelectorAll('#side button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
+  teamsReady.then(()=>loadTeam(new URLSearchParams(location.search).get('p')));
+  document.addEventListener('teamchange',()=>loadTeam(null));
 });
 </script>
 <footer><div class="wrap">
 <p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
-<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API.
 Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> (<a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
 </div></footer></body></html>
