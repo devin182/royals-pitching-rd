@@ -36,6 +36,11 @@ FOOT = """<footer><div class="wrap">
 <p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
 Code: <a href="{gh}">GitHub repo</a> (<a href="{gh}/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
 </div></footer></body></html>"""
+code = OUT / "code"
+code.mkdir(exist_ok=True)
+for f in list((ROOT / "sql").glob("*.sql")) + list((ROOT / "R").glob("*.R")) + list((ROOT / "report").glob("*.Rmd")) + [ROOT / "Makefile"]:
+    if f.exists():
+        shutil.copy(f, code / (f.name + (".txt" if f.suffix in (".R", ".Rmd", "") else ".txt")))
 # Pages built here from site_src/; tunnel.html and gameplan.html are self-contained pages copied in from
 # tunnel/ and gameplan/ -- for those we only rewrite the nav list (and add the CI badge) so every page matches.
 NAV = [(n, t) for n, t in PAGES if (SRC / n).exists() or (OUT / n).exists()]
@@ -84,11 +89,6 @@ for name, title in NAV:
     if gh_link in html and "actions/workflows/ci.yml" not in html:
         html = html.replace(gh_link, gh_link + BADGE, 1)
     (OUT / name).write_text(html)
-code = OUT / "code"
-code.mkdir(exist_ok=True)
-for f in list((ROOT / "sql").glob("*.sql")) + list((ROOT / "R").glob("*.R")) + list((ROOT / "report").glob("*.Rmd")) + [ROOT / "Makefile"]:
-    if f.exists():
-        shutil.copy(f, code / (f.name + (".txt" if f.suffix in (".R", ".Rmd", "") else ".txt")))
 pal = json.loads((ROOT / "config" / "pitch_colors.json").read_text())
 pal = {k: v for k, v in pal.items() if not k.startswith("_")}
 (OUT / "assets" / "palette.js").write_text(
