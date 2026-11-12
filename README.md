@@ -18,6 +18,8 @@ interactive HTML/CSS/JS reports, and a reproducible daily pitching report printe
   5. Count leverage with empirical-Bayes shrinkage
   6. Fatigue curves
   7. Four coach-facing recommendations
+- **Tunnel Viewer** (`site/tunnel/`): a Three.js broadcast-style view of average pitch paths with camera presets, playback speeds, a live gap HUD and a 2D fallback when WebGL is missing. Data built by `tunnel/build_tunnel.py`.
+- **Game Plan** (`gameplan/`): an xgboost matchup model and series game-plan generator for Royals starters vs the first 2027 opponents. Validation is reported honestly: hitter traits add little over pitcher and location features.
 - **Reports**: a daily pitching report (velocity and shape vs each pitcher's baseline, alert flags, workload, opponent attack / avoid / put-away sheet) and a one-page card for every pitcher, rendered from R Markdown with SQL chunks.
 - **Methods & Code**: definitions plus the actual SQL and R source.
 
