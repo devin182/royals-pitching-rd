@@ -94,26 +94,31 @@ two[, whiff := wh / pmax(1, sw)]
 q2 <- two[sw >= MIN_SW][order(-whiff)]
 pa <- if (nrow(q2)) q2[1] else two[1]
 pa_most <- pa$pitch_type == two[1]$pitch_type
-t1 <- list(tag = "Attack",
+t1 <- if (nrow(q2)) list(tag = "Attack",
   line = if (pa_most) sprintf("The %s is the put-away pitch. Use it to finish at-bats.", nm(pa$pitch_type))
          else sprintf("Lean on the %s with two strikes. It misses the most bats.", nm(pa$pitch_type)),
   stat = sprintf("%s of two-strike pitches · %s whiffs/swing (%d swings)", pct(pa$share), pct(pa$whiff), pa$sw),
   detail = {
     s <- ars[pitch_type == pa$pitch_type]$stuff_plus
     nxt <- q2[pitch_type != pa$pitch_type][1]
-    paste0(if (!is.na(s)) sprintf("It grades %d Stuff+. ", s) else "",
+    paste0(if (length(s) && !is.na(s)) sprintf("It grades %d Stuff+. ", s) else "",
            if (nrow(nxt) && !is.na(nxt$pitch_type)) sprintf("Next best two-strike miss rate: the %s at %s.", nm(nxt$pitch_type), pct(nxt$whiff))
-           else "No other pitch has 50+ two-strike swings.")
-  })
+           else "No other pitch has 50+ two-strike swings yet.")
+  }) else list(tag = "Watch",
+  line = sprintf("The %s is his most-used two-strike pitch.", nm(pa$pitch_type)),
+  stat = sprintf("%s of two-strike pitches · %d two-strike swings so far", pct(pa$share), pa$sw),
+  detail = "No pitch has 50+ two-strike swings yet, so this card does not name a put-away pitch by miss rate.")
 
 # 2 · AVOID: the lowest shrunk run value per 100 (pitcher's view, + = good) among pitches thrown 100+ times
 cand <- ars[n >= 100][order(xrv100)]
+if (!nrow(cand)) cand <- ars[n >= MIN_N][order(xrv100)]
 wp <- cand[1]
 beh <- pts[cnt == "Behind", .(n = .N), by = pitch_type][, share := n / sum(n)]
 wp_beh <- beh[pitch_type == wp$pitch_type]$share
 t2 <- if (wp$xrv100 < 0) {
   list(tag = "Avoid",
-  line = sprintf("Limit the %s. It is his most damaging pitch.", nm(wp$pitch_type)),
+  line = if (wp$pitch_type == pa$pitch_type && nrow(q2)) sprintf("The %s is also his most-hit pitch. Save it for two strikes.", nm(wp$pitch_type))
+         else sprintf("Limit the %s. It is his most damaging pitch.", nm(wp$pitch_type)),
   stat = sprintf("xRV/100 %s shrunk (raw %s) · %s xwOBAcon · %d pitches", sgn(wp$xrv100, 2), sgn(wp$xrv100_raw, 2), woba(wp$xwoba_con), wp$n),
   detail = sprintf("When behind in the count he throws it %s of the time%s.", pct(if (length(wp_beh)) wp_beh else 0),
                    if (nrow(cand) > 1) sprintf("; the %s grades %s there instead", nm(cand[.N]$pitch_type), sgn(cand[.N]$xrv100, 2)) else ""))
@@ -128,7 +133,13 @@ t2 <- if (wp$xrv100 < 0) {
 fp <- pts[pitch_type == fb$pitch_type & !is.na(plate_z_norm)]
 hi <- fp[plate_z_norm >= 2 / 3]; lo <- fp[plate_z_norm < 1 / 3]
 hs <- sum(hi$sw); ls <- sum(lo$sw); hw <- sum(hi$wh) / max(1, hs); lw <- sum(lo$wh) / max(1, ls)
-t3 <- if (hs >= MIN_SW && ls >= MIN_SW) {
+lg_up <- q("SELECT sum(is_whiff::INT) / sum(is_swing::INT) AS w FROM pitch_features WHERE pitch_type = ? AND plate_z_norm >= 2/3", fb$pitch_type)$w
+t3 <- if (hs >= MIN_SW && ls < MIN_SW && hw >= lg_up + 0.03) {
+  list(tag = "Watch",
+    line = sprintf("Use the %s up in the zone. It beats the league rate there.", nm(fb$pitch_type)),
+    stat = sprintf("%s whiffs/swing up (%d sw) vs %s MLB %s up", pct(hw), hs, pct(lg_up), fb$pitch_type),
+    detail = sprintf("%s of his %ss finish in the top third. Too few swings down (%d) to compare.", pct(nrow(hi) / nrow(fp)), nm(fb$pitch_type), ls))
+} else if (hs >= MIN_SW && ls >= MIN_SW) {
   up <- hw > lw
   list(tag = "Watch",
     line = if (up) sprintf("Elevate the %s. Hitters miss it up.", nm(fb$pitch_type)) else sprintf("Keep the %s down. It misses more bats low.", nm(fb$pitch_type)),
@@ -136,12 +147,17 @@ t3 <- if (hs >= MIN_SW && ls >= MIN_SW) {
     detail = sprintf("%s of his %ss finish in the top third of the zone and %s in the bottom third.", pct(nrow(hi) / nrow(fp)), nm(fb$pitch_type), pct(nrow(lo) / nrow(fp))))
 } else {
   oz <- pts[iz == 0 & pitch_type != pa$pitch_type, .(n = .N, ch = sum(ch)), by = pitch_type][n >= 100][, rate := ch / n][order(-rate)]
+  if (!nrow(oz)) list(tag = "Watch",
+    line = sprintf("Build the %s sample before setting a height plan.", nm(fb$pitch_type)),
+    stat = sprintf("%d swings up · %d swings down", hs, ls),
+    detail = "Rates under 50 swings are not quoted on this card.") else
   list(tag = "Watch",
     line = sprintf("After the %s, hitters chase the %s most.", nm(pa$pitch_type), nm(oz[1]$pitch_type)),
     stat = sprintf("%s chased on %d out-of-zone pitches", pct(oz[1]$rate), oz[1]$n),
     detail = sprintf("Fastball height splits are too thin to call (%d swings up, %d down).", hs, ls))
 }
-tk <- list(t1, t2, t3)
+one <- function(x) if (length(x) && !is.na(x[1])) as.character(x[1]) else ""
+tk <- lapply(list(t1, t2, t3), function(t) lapply(t, one))
 ```
 
 ```{r charts}
@@ -181,8 +197,9 @@ loc <- ggplot(lp, aes(plate_x, plate_z_norm)) +
   labs(x = "Plate side, ft (catcher view)", y = "Height in zone (0 = bottom, 1 = top)") + theme_dj(6.5) +
   theme(panel.spacing = unit(4, "pt"), axis.text = element_text(size = 5))
 zr <- lp[, .(z = mean(iz, na.rm = TRUE), n = .N), by = cnt]
-co_loc <- sprintf("Behind in the count %s of his pitches are in the zone vs %s when ahead.",
-                  pct(zr[cnt == "Behind"]$z), pct(zr[cnt == "Ahead"]$z))
+zb <- zr[cnt == "Behind"]$z; za <- zr[cnt == "Ahead"]$z
+co_loc <- if (abs(zb - za) < 0.03) sprintf("He fills the zone at about the same rate ahead (%s) and behind (%s).", pct(za), pct(zb)) else
+  sprintf("He throws %s of pitches in the zone when behind and %s when ahead.", pct(zb), pct(za))
 n_loc <- sprintf("n = %s. Ahead %s · even %s · behind %s · two strikes %s pitches. Box = rule-book zone.",
                  format(nrow(lp), big.mark = ","), ncnt[cnt == "Ahead"]$N, ncnt[cnt == "Even"]$N, ncnt[cnt == "Behind"]$N, ncnt[cnt == "Two strikes"]$N)
 
