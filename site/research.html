@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Research · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
+<meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/plotly.min.js" defer></script><script src="assets/app.js" defer></script>
+</head><body>
+<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Pitcher Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods & Code</a></li></ul></div></nav>
+<section style="padding-top:44px"><div class="wrap">
+  <div class="eyebrow">Research write-up</div>
+  <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">2026 Royals pitching: what the pitches say</h1>
+  <p class="muted" style="max-width:800px">Data: every 2026 regular-season MLB pitch from Baseball Savant (<span data-meta="n_pitches"></span> pitches, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>), including <span data-meta="n_royals"></span> by Royals pitchers. League-wide data is the baseline for every Royals number. Three rules throughout: show sample sizes and shrink small ones, judge process (whiffs, chases, expected contact) rather than outcomes like ERA, and put movement in context (fastball gaps, arm angle, VAA).</p>
+  <div class="toc"><a href="#stuff">1 · Stuff+ model</a><a href="#vaa">2 · Approach angle</a><a href="#location">3 · Location &amp; command</a><a href="#tunnel">4 · Tunneling</a><a href="#counts">5 · Count leverage</a><a href="#fatigue">6 · Fatigue</a><a href="#recs">7 · Coach recommendations</a></div>
+</div></section>
+
+<section id="stuff"><div class="wrap">
+  <h2>1 · A simple, honest Stuff+</h2>
+  <div class="grid g2">
+    <div>
+      <p><b>Question:</b> how good is a pitch on shape alone, before location and luck?</p>
+      <p><b>Method (R, xgboost):</b> one gradient-boosted model per pitch group (fastballs, breaking, offspeed), trained on all MLB pitches. Inputs are physical only: velocity, IVB, HB, spin rate, spin axis, extension, release height and side, arm angle, and each pitch's velocity and movement gap from the pitcher's primary fastball. Lefties are mirrored so arm side is always +. The target is <i>expected</i> run value: for balls in play, the actual result is swapped for the league-average value of that exit velocity, launch angle and count. That strips out defense and BABIP noise. Grades are scaled so 100 = MLB average pitch and 10 = one standard deviation across pitcher-pitch types.</p>
+      <p><b>Validation:</b> models were trained only on games through <span id="split"></span> and tested on everything after. A single pitch's run value is mostly noise, so pitch-level R² is tiny (that's normal and expected). The real test is predictive: <b>did early-season Stuff+ predict late-season run value better than early-season results did?</b> It did (chart, right).</p>
+      <div class="tblwrap"><table class="tbl" id="valtbl"></table></div>
+      <p class="caption">Holdout metrics per model. cor(whiff) = correlation between predicted quality and whiff on held-out swings.</p>
+    </div>
+    <div><div id="valchart" class="chart"></div><p class="caption">Correlation with late-season run value per 100 pitches, same pitcher and pitch type (<span id="nval"></span> pitch types with 100+ pitches in both windows).</p></div>
+  </div>
+  <div class="grid g2" style="margin-top:22px">
+    <div><div id="stuffscatter" class="chart tall"></div><p class="caption">Stuff+ vs whiff rate for every MLB pitcher-pitch type with 100+ pitches. Royals are highlighted. r = <span id="rwhiff"></span>.</p></div>
+    <div><div id="imp" class="chart tall"></div><p class="caption">What the model leans on (xgboost gain). For fastballs, ride (IVB), velocity and run lead the list. For secondaries, the gaps from the fastball matter as much as raw movement.</p></div>
+  </div>
+  <h3 style="margin-top:28px">Royals Stuff+ leaders and laggards <span class="muted" style="font-size:.9rem">(min 100 pitches)</span></h3>
+  <div class="grid g2"><div class="tblwrap"><table class="tbl" id="lead"></table></div><div class="tblwrap"><table class="tbl" id="lag"></table></div></div>
+  <div class="callout"><b>Limits, stated plainly:</b> this is a deliberately simple public-data model. There's no pitch-tracking-only data (seam-shifted wake, true spin efficiency), no catcher or park adjustment, and one season of data. Treat a grade as a starting point for a conversation, not a verdict. Being honest about uncertainty is part of the job.</div>
+</div></section>
+
+<section id="vaa" class="alt"><div class="wrap">
+  <h2>2 · Vertical approach angle: where flat fastballs play</h2>
+  <div class="grid g2">
+    <div>
+      <p>VAA is the angle the ball is travelling as it crosses the front of the plate, computed from Statcast's trajectory fit (<code>vy0, vz0, ay, az</code>). Raw VAA mostly reflects where a pitch is thrown (r² = <span id="vaar2"></span> against plate height), so I regress it on location and keep the residual: <b>location-adjusted VAA</b>. Positive means flatter than expected for that height.</p>
+      <p>Across all 2026 four-seamers, the flattest fifth got <b><span id="q5hi"></span></b> whiffs per swing at the top of the zone, vs <b><span id="q1hi"></span></b> for the steepest fifth. At the bottom of the zone the gap nearly disappears (<span id="q1lo"></span> vs <span id="q5lo"></span>). <span class="accent">Flat fastballs are a top-of-the-zone weapon.</span></p>
+      <p>The Royals chart below shows each four-seamer's location-adjusted VAA against its high-zone whiff rate.</p>
+    </div>
+    <div><div id="vaaq" class="chart"></div></div>
+  </div>
+  <div id="vaaroy" class="chart tall" style="margin-top:18px"></div>
+  <p class="caption">Royals four-seamers (200+ pitches). Bubble size = pitches. Right = flatter for its location. Up = more whiffs on high-zone swings.</p>
+</div></section>
+
+<section id="location"><div class="wrap">
+  <h2>3 · Location &amp; command: the same slider, a different result</h2>
+  <div class="grid g2">
+    <div>
+      <p>Pitch quality is shape <i>plus</i> location. Noah Cameron's slider shows it clearly. It's a chase pitch: below the zone it got whiffs on <b><span id="cambelow"></span></b> of swings. Left in the middle of the zone it got whiffs on <b><span id="cammid"></span></b> and was hit hard.</p>
+      <p>Through June he buried <b><span id="cam1b"></span></b> of his sliders below the zone. From July on it was <b><span id="cam2b"></span></b>. His slider whiff rate per swing went from <b>21.8%</b> to <b>42.2%</b> over that span, while the league slider rate stayed flat (33.6% to 33.1%). The shape didn't change. The target did.</p>
+      <p class="muted">Monthly run value is noisy at about 50–100 sliders a month (see the chart). Whiff rate is the more stable signal here.</p>
+    </div>
+    <div><div id="camreg" class="chart"></div><p class="caption">Cameron slider by location region: whiff per swing (bars) and expected run value per 100 pitches (diamonds, right axis). Labels show pitches.</p></div>
+  </div>
+  <div id="cammonth" class="chart" style="margin-top:18px"></div>
+  <p class="caption">Cameron slider by month: share thrown below the zone vs whiff per swing.</p>
+</div></section>
+
+<section id="tunnel" class="alt"><div class="wrap">
+  <h2>4 · Tunneling: what it buys and what it doesn't</h2>
+  <div class="grid g2">
+    <div>
+      <p>For every pair of consecutive pitches in an at-bat, I rebuilt both trajectories from the Statcast 9-parameter fit. Then I measured how far apart the two pitches were at the <b>tunnel point</b> (23.8 ft in front of the plate, about when a hitter has to commit) and again at the plate.</p>
+      <p>For fastball-then-breaking-ball pairs across MLB, tight tunnels go with far more <b>chases</b>: 51% when the two pitches are within 2 inches at the tunnel point, vs 24% at 16–18 inches. <b>Whiff rate per swing rises slightly the other way.</b> My read is that tunneling earns the swing decision, and movement after the tunnel point earns the miss. Location is a confounder (a pitch that tunnels with a strike usually starts near the zone), so I treat this as descriptive, not causal.</p>
+    </div>
+    <div><div id="tunbins" class="chart"></div></div>
+  </div>
+  <h3 style="margin-top:24px">Royals' best-performing pitch pairs <span class="muted" style="font-size:.9rem">(60+ instances, ranked by whiff on the 2nd pitch)</span></h3>
+  <div class="tblwrap"><table class="tbl" id="pairs"></table></div>
+</div></section>
+
+<section id="counts"><div class="wrap">
+  <h2>5 · Count leverage, with shrinkage</h2>
+  <p style="max-width:860px">Usage and results by count group (ahead, even, behind, two strikes) for any pitcher. Small samples are pulled toward the league average for that pitch type and count group using a 250-pitch prior (empirical-Bayes style). A pitch type with 40 pitches barely moves from league average, while one with 600 mostly keeps its own number. This is what keeps a 25-pitch fluke from becoming a recommendation.</p>
+  <div class="controls"><label class="ctl">Pitcher<select id="cpick"></select></label></div>
+  <div class="grid g2"><div id="cuse" class="chart"></div><div id="crv" class="chart"></div></div>
+  <p class="caption">Left: pitch mix by count group. Right: expected run value per 100 pitches (pitcher's view, + = good). Hollow = raw, filled = shrunk, so you can see how much each estimate moves.</p>
+</div></section>
+
+<section id="fatigue" class="alt"><div class="wrap">
+  <h2>6 · Fatigue: velocity by pitch count</h2>
+  <p style="max-width:860px">For outings of 70+ pitches, each fastball (four-seam + sinker) is compared to that pitcher's average over his first 25 pitches of the same game, then binned by pitch count. Comparing each pitcher to his own baseline that day removes day-to-day and park differences in raw velocity.</p>
+  <div id="fat" class="chart tall"></div>
+  <p class="caption">Dashed line = −1 mph, a common "check on him" threshold. Bins with fewer than 20 fastballs are hidden.</p>
+</div></section>
+
+<section id="recs"><div class="wrap">
+  <h2>7 · Coach-facing recommendations</h2>
+  <p class="muted" style="max-width:860px">Each recommendation is written the way I'd bring it to the pitching coach: one change, why, and how confident I am. All numbers come from the 2026 data. Shrunk values use a 250-pitch prior toward the league average for that pitch type and batter side.</p>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="coach"><div class="who">Daniel Lynch IV <span class="muted">· LHP</span></div>
+      <div class="say">"Against righties, swap some four-seamers for sinkers. The four-seamer is the pitch they're squaring up."</div>
+      <p id="rec-lynch"></p><div id="c-lynch" class="chart" style="min-height:280px"></div></div>
+    <div class="coach"><div class="who">Seth Lugo <span class="muted">· RHP</span></div>
+      <div class="say">"Against lefties, let the cutter take some of the four-seamer's pitches. Keep the four-seamer as an above-the-zone chase pitch."</div>
+      <p id="rec-lugo"></p><div id="c-lugo" class="chart" style="min-height:280px"></div></div>
+    <div class="coach"><div class="who">Noah Cameron <span class="muted">· LHP</span></div>
+      <div class="say">"Whatever changed with the slider in July, keep it. Bury it. It's a chase pitch, not a strike pitch."</div>
+      <p id="rec-cam"></p><div id="c-cam" class="chart" style="min-height:280px"></div></div>
+    <div class="coach"><div class="who">Steven Cruz <span class="muted">· RHP</span></div>
+      <div class="say">"His fastball is flat and 98. Live at the top of the zone, especially with two strikes."</div>
+      <p id="rec-cruz"></p><div id="c-cruz" class="chart" style="min-height:280px"></div></div>
+  </div>
+  <div class="callout" style="margin-top:26px"><b>What I'd do next with club data:</b> confirm these with pitcher-level biomechanics and pitch-design notes, check catcher framing and the opposing lineups behind the samples, and talk to the pitcher about what he's trying to do. A recommendation that fights his plan or his feel won't stick.</div>
+</div></section>
+<script src="assets/research.js" defer></script>
+<footer><div class="wrap">
+<p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
+Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
+</div></footer></body></html>

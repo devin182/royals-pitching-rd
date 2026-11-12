@@ -1,0 +1,16 @@
+# raw + intermediate data (rebuilt by `make fetch db model`)
+data/raw/
+data/out/
+*.duckdb
+*.duckdb.wal
+*.csv
+# local-only
+notes/
+screenshots/
+report/out/
+*_cache/
+*_files/
+.Rhistory
+.RData
+__pycache__/
+.DS_Store

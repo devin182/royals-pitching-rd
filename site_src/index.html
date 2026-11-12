@@ -1,0 +1,52 @@
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">Pitching R&amp;D portfolio · 2026 season</div>
+  <h1>Turning every pitch into<br><span class="accent">one clear next step.</span></h1>
+  <p class="lead">An end-to-end look at the 2026 Royals pitching staff: Statcast pitch-level data, a SQL pipeline in DuckDB, models in R, interactive reports, and a daily one-page report a coach can read in two minutes.</p>
+  <div class="btns"><a class="btn primary" href="explorer.html">Open the Pitcher Explorer</a><a class="btn" href="research.html">Read the research</a><a class="btn" href="reports.html">See the daily report</a></div>
+  <div class="kpis">
+    <div class="kpi"><b data-meta="n_pitches">712,014</b><span>MLB pitches modeled</span></div>
+    <div class="kpi"><b data-meta="n_games">2,429</b><span>regular-season games</span></div>
+    <div class="kpi"><b data-meta="n_royals">23,644</b><span>pitches by Royals pitchers</span></div>
+    <div class="kpi"><b>20</b><span>pitchers with 300+ pitches profiled</span></div>
+  </div>
+</div></header>
+
+<section><div class="wrap">
+  <h2>What's inside</h2>
+  <p class="muted" style="max-width:760px">Each section answers a question a pitching group asks, then ends with something a coach or pitcher can use. Every number on this site is computed from public Baseball Savant data. Nothing is hand-entered.</p>
+  <div class="grid g3" style="margin-top:22px">
+    <div class="card"><span class="tag">xgboost · R</span><h3>A transparent Stuff+ model</h3><p>Grades every pitch on physical traits alone: velocity, movement, spin, release, extension, arm angle, and gaps from the pitcher's fastball. It's validated on late-season games it never saw, and early-season Stuff+ predicted late-season run value better than early-season results did.</p><a href="research.html#stuff">Model &amp; validation →</a></div>
+    <div class="card"><span class="tag">DuckDB SQL · R Markdown</span><h3>A daily pitching report</h3><p>One command rebuilds a one-page report for the last game: each pitcher's velocity and shape vs his own baseline, alert flags, workload, and an attack / avoid / put-away sheet for the opposing lineup.</p><a href="reports.html">Daily report &amp; pitcher cards →</a></div>
+    <div class="card"><span class="tag">Coach-facing</span><h3>Four recommendations</h3><p>Specific, data-backed adjustments for Daniel Lynch IV, Seth Lugo, Noah Cameron and Steven Cruz, phrased the way I'd bring them to a pitching coach, with sample sizes and shrinkage shown.</p><a href="research.html#recs">Recommendations →</a></div>
+  </div>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <h2>Research at a glance</h2>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card"><h3>Flat fastballs miss bats up, not down</h3><p>Among 2026 four-seamers, high-zone whiff rate climbs from 20% for the steepest fifth (location-adjusted VAA) to 35% for the flattest. In the bottom third of the zone the gap almost vanishes (11% vs 14%).</p><a href="research.html#vaa">VAA analysis →</a></div>
+    <div class="card"><h3>Tunnels buy chases, not whiffs</h3><p>When a breaking ball follows a fastball, a tighter "tunnel" (the two pitches closer together 23.8 ft from the plate) goes with much higher chase rates: 51% under 2 inches vs 24% at 16–18 inches. Whiff rate per swing doesn't follow the same pattern.</p><a href="research.html#tunnel">Tunneling →</a></div>
+    <div class="card"><h3>A slider fixed by location, not shape</h3><p>Noah Cameron buried 57% of his sliders below the zone from July on, up from 37%. Its expected run value per 100 went from −2.3 to +0.1 with the same shape.</p><a href="research.html#location">Location &amp; command →</a></div>
+    <div class="card"><h3>Who loses velo, and when</h3><p>Pitch-count fatigue curves for every Royals starter, measured against each pitcher's own first 25 pitches. That shows who holds his stuff deep into a start and who fades as the pitch count climbs.</p><a href="research.html#fatigue">Fatigue →</a></div>
+  </div>
+</div></section>
+
+<section id="about"><div class="wrap grid g2" style="align-items:start">
+  <div>
+    <h2>About me</h2>
+    <p>I'm Devin Jenkinson, a Senior Information Systems Engineer and a baseball fan in Kansas City. I pitched through high school and was recruited to keep playing after that. Then I broke my throwing hand and wrist in a pickup basketball game, and that ended it. Coming at the game from the mound is why pitching development is the part of baseball I care about most.</p>
+    <p>My day job is building and running enterprise systems: Oracle Fusion, SQL and PL/SQL, BI Publisher and OTBI reporting, PowerShell automation, and API integrations. On the side I'm building <i>Slugger</i>, an arcade baseball game.</p>
+    <p>Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a> · Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub</a></p>
+  </div>
+  <div class="card">
+    <h3>How this maps to the role</h3>
+    <ul style="margin:0;padding-left:18px">
+      <li><b>SQL + R on large data:</b> 712K-pitch DuckDB pipeline with versioned <code>.sql</code> files; modeling and reports in R.</li>
+      <li><b>Modern pitching metrics:</b> IVB/HB, VAA (location-adjusted), extension, arm angle, release consistency, Stuff+, tunneling.</li>
+      <li><b>Daily reports:</b> reproducible <code>make report</code> that rebuilds the daily report and pitcher cards from raw data.</li>
+      <li><b>HTML/CSS reports &amp; PDFs:</b> this site, plus print-ready one-page reports.</li>
+      <li><b>Communication:</b> each analysis ends in one plain-language takeaway for coaches.</li>
+    </ul>
+    <p style="margin-top:14px"><a href="methods.html">How it's built →</a></p>
+  </div>
+</div></section>

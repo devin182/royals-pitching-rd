@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Daily pitching report</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+
+
+
+
+<style type="text/css">@page { size: Letter; margin: 0.3in; }
+:root { --navy:#0B1F3A; --powder:#7AB2DD; --gold:#c9a227; --ink:#1b2430; --muted:#5b6b7f; --line:#d9e2ec; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: "IBM Plex Sans","Helvetica Neue",Arial,sans-serif; color: var(--ink); font-size: 9pt; margin: 0; max-width: 7.8in; }
+.main-container, .container-fluid { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+h1.title, .author, .date, #header { display: none; }
+.hdr { background: var(--navy); color: #fff; padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 4px solid var(--powder); }
+.hdr h1 { font-family: "Archivo", sans-serif; margin: 0; font-size: 19pt; letter-spacing: .3px; }
+.hdr .sub { color: #cfe3f5; font-size: 8.6pt; margin-top: 2px; }
+.hdr .tag { font-size: 7.6pt; color: #cfe3f5; text-align: right; }
+h2 { font-size: 10.5pt; color: var(--navy); border-bottom: 2px solid var(--powder); padding-bottom: 2px; margin: 7px 0 4px; text-transform: uppercase; letter-spacing: .6px; }
+table { border-collapse: collapse; width: 100%; font-size: 8.4pt; }
+th { background: #eaf2fa; color: var(--navy); font-weight: 700; padding: 3px 5px; text-align: right; border-bottom: 1px solid var(--line); }
+td { padding: 2.5px 5px; text-align: right; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid2 img { width: 100%; }
+.plan { background: #f4f8fc; border-left: 4px solid var(--navy); padding: 6px 10px; border-radius: 4px; }
+.plan li { margin: 3px 0; }
+.flag { color: #b42318; font-weight: 700; }
+.good { color: #087443; font-weight: 700; }
+.foot { color: var(--muted); font-size: 7.2pt; margin-top: 6px; border-top: 1px solid var(--line); padding-top: 4px; }
+.pill { display:inline-block; padding: 0 6px; border-radius: 9px; font-weight:700; color:#fff; }
+.hit { page-break-inside: avoid; }
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Daily pitching report</h1>
+
+
+
+<style>body{font-size:8.3pt} table{font-size:7.5pt} td,th{padding:1.6px 4px} .hdr h1{font-size:15pt} h2{margin:6px 0 3px}</style>
+<div class="hdr">
+<div>
+<h1>
+Daily Pitching Report · Sun Sep 27, 2026
+</h1>
+<div class="sub">
+KC vs CLE · 5 pitchers used · 120 pitches · 2 flag(s) on pitch types
+with 5+ pitches
+</div>
+</div>
+<div class="tag">
+Auto-generated from Statcast via DuckDB SQL + R Markdown<br>Sample
+portfolio report by Devin Jenkinson<br>Not affiliated with any MLB club
+</div>
+</div>
+<div id="stuff-check-today-vs.-season-baseline" class="section level2">
+<h2>Stuff check: today vs. season baseline</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+Pitcher
+</th>
+<th style="text-align:left;">
+Pitch
+</th>
+<th style="text-align:right;">
+#
+</th>
+<th style="text-align:left;">
+Velo
+</th>
+<th style="text-align:left;">
+Δ
+</th>
+<th style="text-align:left;">
+IVB
+</th>
+<th style="text-align:left;">
+ΔIVB
+</th>
+<th style="text-align:left;">
+HB
+</th>
+<th style="text-align:left;">
+ΔHB
+</th>
+<th style="text-align:left;">
+Spin
+</th>
+<th style="text-align:left;">
+ΔSpin
+</th>
+<th style="text-align:left;">
+Rel Δ (in)
+</th>
+<th style="text-align:left;">
+Whf/Sw
+</th>
+<th style="text-align:left;">
+CSW
+</th>
+<th style="text-align:left;">
+Flag
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Lucas Erceg
+</td>
+<td style="text-align:left;">
+FF
+</td>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:left;">
+99.6
+</td>
+<td style="text-align:left;">
++2.4
+</td>
+<td style="text-align:left;">
+13.9
+</td>
+<td style="text-align:left;">
+-0.2
+</td>
+<td style="text-align:left;">
+8.8
+</td>
+<td style="text-align:left;">
+-1.6
+</td>
+<td style="text-align:left;">
+2255
+</td>
+<td style="text-align:left;">
++153
+</td>
+<td style="text-align:left;">
+8.4
+</td>
+<td style="text-align:left;">
+1/4
+</td>
+<td style="text-align:left;">
+14%
+</td>
+<td style="text-align:left;">
+<span class="flag">RELEASE Δ</span>
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+CH
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:left;">
+91.6
+</td>
+<td style="text-align:left;">
++2.0
+</td>
+<td style="text-align:left;">
+5.8
+</td>
+<td style="text-align:left;">
++0.0
+</td>
+<td style="text-align:left;">
+16.8
+</td>
+<td style="text-align:left;">
+-0.1
+</td>
+<td style="text-align:left;">
+1822
+</td>
+<td style="text-align:left;">
+-42
+</td>
+<td style="text-align:left;">
+6.5
+</td>
+<td style="text-align:left;">
+1/3
+</td>
+<td style="text-align:left;">
+33%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+SL
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:left;">
+86.6
+</td>
+<td style="text-align:left;">
++1.9
+</td>
+<td style="text-align:left;">
+-4.1
+</td>
+<td style="text-align:left;">
+-1.7
+</td>
+<td style="text-align:left;">
+-1.6
+</td>
+<td style="text-align:left;">
+-0.4
+</td>
+<td style="text-align:left;">
+2141
+</td>
+<td style="text-align:left;">
++127
+</td>
+<td style="text-align:left;">
+8.2
+</td>
+<td style="text-align:left;">
+0/2
+</td>
+<td style="text-align:left;">
+0%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+FC
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+93.7
+</td>
+<td style="text-align:left;">
+-0.9
+</td>
+<td style="text-align:left;">
+4.1
+</td>
+<td style="text-align:left;">
+-3.4
+</td>
+<td style="text-align:left;">
+-1.6
+</td>
+<td style="text-align:left;">
++0.1
+</td>
+<td style="text-align:left;">
+2290
+</td>
+<td style="text-align:left;">
++16
+</td>
+<td style="text-align:left;">
+3.1
+</td>
+<td style="text-align:left;">
+0/1
+</td>
+<td style="text-align:left;">
+50%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+SI
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+99.6
+</td>
+<td style="text-align:left;">
++2.6
+</td>
+<td style="text-align:left;">
+9.2
+</td>
+<td style="text-align:left;">
+-1.1
+</td>
+<td style="text-align:left;">
+14.4
+</td>
+<td style="text-align:left;">
+-0.4
+</td>
+<td style="text-align:left;">
+2072
+</td>
+<td style="text-align:left;">
++188
+</td>
+<td style="text-align:left;">
+7.1
+</td>
+<td style="text-align:left;">
+0/1
+</td>
+<td style="text-align:left;">
+50%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Nolan Hoffman
+</td>
+<td style="text-align:left;">
+FF
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+93.1
+</td>
+<td style="text-align:left;">
++0.5
+</td>
+<td style="text-align:left;">
+5.6
+</td>
+<td style="text-align:left;">
++0.2
+</td>
+<td style="text-align:left;">
+17.3
+</td>
+<td style="text-align:left;">
++0.5
+</td>
+<td style="text-align:left;">
+2422
+</td>
+<td style="text-align:left;">
+-26
+</td>
+<td style="text-align:left;">
+1.0
+</td>
+<td style="text-align:left;">
+1/1
+</td>
+<td style="text-align:left;">
+100%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+CH
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+85.2
+</td>
+<td style="text-align:left;">
++0.3
+</td>
+<td style="text-align:left;">
+-6.8
+</td>
+<td style="text-align:left;">
++1.2
+</td>
+<td style="text-align:left;">
+14.2
+</td>
+<td style="text-align:left;">
++0.1
+</td>
+<td style="text-align:left;">
+1943
+</td>
+<td style="text-align:left;">
++148
+</td>
+<td style="text-align:left;">
+1.0
+</td>
+<td style="text-align:left;">
+0/1
+</td>
+<td style="text-align:left;">
+0%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+SI
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+92.5
+</td>
+<td style="text-align:left;">
+-0.0
+</td>
+<td style="text-align:left;">
+-1.6
+</td>
+<td style="text-align:left;">
+-0.8
+</td>
+<td style="text-align:left;">
+19.6
+</td>
+<td style="text-align:left;">
++1.3
+</td>
+<td style="text-align:left;">
+2183
+</td>
+<td style="text-align:left;">
++9
+</td>
+<td style="text-align:left;">
+1.1
+</td>
+<td style="text-align:left;">
+0/1
+</td>
+<td style="text-align:left;">
+0%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+ST
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+79.2
+</td>
+<td style="text-align:left;">
+-0.6
+</td>
+<td style="text-align:left;">
+5.5
+</td>
+<td style="text-align:left;">
++1.9
+</td>
+<td style="text-align:left;">
+-14.3
+</td>
+<td style="text-align:left;">
+-0.7
+</td>
+<td style="text-align:left;">
+2455
+</td>
+<td style="text-align:left;">
++6
+</td>
+<td style="text-align:left;">
+1.9
+</td>
+<td style="text-align:left;">
+0/0
+</td>
+<td style="text-align:left;">
+0%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+FC
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+90.3
+</td>
+<td style="text-align:left;">
++1.9
+</td>
+<td style="text-align:left;">
+7.4
+</td>
+<td style="text-align:left;">
++1.1
+</td>
+<td style="text-align:left;">
+7.0
+</td>
+<td style="text-align:left;">
++3.2
+</td>
+<td style="text-align:left;">
+2347
+</td>
+<td style="text-align:left;">
++68
+</td>
+<td style="text-align:left;">
+0.7
+</td>
+<td style="text-align:left;">
+0/0
+</td>
+<td style="text-align:left;">
+100%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Daniel Lynch IV
+</td>
+<td style="text-align:left;">
+SI
+</td>
+<td style="text-align:right;">
+42
+</td>
+<td style="text-align:left;">
+93.3
+</td>
+<td style="text-align:left;">
+-0.7
+</td>
+<td style="text-align:left;">
+8.4
+</td>
+<td style="text-align:left;">
+-1.2
+</td>
+<td style="text-align:left;">
+15.9
+</td>
+<td style="text-align:left;">
+-0.2
+</td>
+<td style="text-align:left;">
+2048
+</td>
+<td style="text-align:left;">
+-108
+</td>
+<td style="text-align:left;">
+0.4
+</td>
+<td style="text-align:left;">
+4/22
+</td>
+<td style="text-align:left;">
+29%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+SL
+</td>
+<td style="text-align:right;">
+17
+</td>
+<td style="text-align:left;">
+87.8
+</td>
+<td style="text-align:left;">
++0.5
+</td>
+<td style="text-align:left;">
+4.5
+</td>
+<td style="text-align:left;">
++1.5
+</td>
+<td style="text-align:left;">
+-1.6
+</td>
+<td style="text-align:left;">
++0.9
+</td>
+<td style="text-align:left;">
+2317
+</td>
+<td style="text-align:left;">
++18
+</td>
+<td style="text-align:left;">
+0.9
+</td>
+<td style="text-align:left;">
+3/9
+</td>
+<td style="text-align:left;">
+29%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+CH
+</td>
+<td style="text-align:right;">
+13
+</td>
+<td style="text-align:left;">
+85.8
+</td>
+<td style="text-align:left;">
++0.3
+</td>
+<td style="text-align:left;">
+0.4
+</td>
+<td style="text-align:left;">
+-1.7
+</td>
+<td style="text-align:left;">
+11.6
+</td>
+<td style="text-align:left;">
+-2.0
+</td>
+<td style="text-align:left;">
+1383
+</td>
+<td style="text-align:left;">
+-138
+</td>
+<td style="text-align:left;">
+0.7
+</td>
+<td style="text-align:left;">
+0/7
+</td>
+<td style="text-align:left;">
+23%
+</td>
+<td style="text-align:left;">
+<span class="flag">SHAPE Δ</span>
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+KC
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:left;">
+84.1
+</td>
+<td style="text-align:left;">
++2.3
+</td>
+<td style="text-align:left;">
+-1.4
+</td>
+<td style="text-align:left;">
++0.0
+</td>
+<td style="text-align:left;">
+-2.8
+</td>
+<td style="text-align:left;">
++0.1
+</td>
+<td style="text-align:left;">
+2296
+</td>
+<td style="text-align:left;">
++53
+</td>
+<td style="text-align:left;">
+0.2
+</td>
+<td style="text-align:left;">
+0/2
+</td>
+<td style="text-align:left;">
+0%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+FF
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+92.6
+</td>
+<td style="text-align:left;">
+-1.9
+</td>
+<td style="text-align:left;">
+14.8
+</td>
+<td style="text-align:left;">
+-0.9
+</td>
+<td style="text-align:left;">
+7.2
+</td>
+<td style="text-align:left;">
+-1.3
+</td>
+<td style="text-align:left;">
+2109
+</td>
+<td style="text-align:left;">
+-174
+</td>
+<td style="text-align:left;">
+0.9
+</td>
+<td style="text-align:left;">
+0/0
+</td>
+<td style="text-align:left;">
+0%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Nate Pearson
+</td>
+<td style="text-align:left;">
+FF
+</td>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:left;">
+97.4
+</td>
+<td style="text-align:left;">
+-0.1
+</td>
+<td style="text-align:left;">
+16.2
+</td>
+<td style="text-align:left;">
++0.0
+</td>
+<td style="text-align:left;">
+6.2
+</td>
+<td style="text-align:left;">
+-0.2
+</td>
+<td style="text-align:left;">
+2185
+</td>
+<td style="text-align:left;">
+-101
+</td>
+<td style="text-align:left;">
+1.1
+</td>
+<td style="text-align:left;">
+2/3
+</td>
+<td style="text-align:left;">
+43%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+SL
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+90.3
+</td>
+<td style="text-align:left;">
++0.6
+</td>
+<td style="text-align:left;">
+2.2
+</td>
+<td style="text-align:left;">
++0.7
+</td>
+<td style="text-align:left;">
+-4.6
+</td>
+<td style="text-align:left;">
++1.0
+</td>
+<td style="text-align:left;">
+2530
+</td>
+<td style="text-align:left;">
+-28
+</td>
+<td style="text-align:left;">
+1.6
+</td>
+<td style="text-align:left;">
+0/1
+</td>
+<td style="text-align:left;">
+0%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+SI
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+96.5
+</td>
+<td style="text-align:left;">
+-0.7
+</td>
+<td style="text-align:left;">
+7.8
+</td>
+<td style="text-align:left;">
+-4.0
+</td>
+<td style="text-align:left;">
+15.8
+</td>
+<td style="text-align:left;">
++2.3
+</td>
+<td style="text-align:left;">
+2176
+</td>
+<td style="text-align:left;">
+-7
+</td>
+<td style="text-align:left;">
+1.5
+</td>
+<td style="text-align:left;">
+0/0
+</td>
+<td style="text-align:left;">
+0%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Connor Thomas
+</td>
+<td style="text-align:left;">
+ST
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:left;">
+81.4
+</td>
+<td style="text-align:left;">
+-1.5
+</td>
+<td style="text-align:left;">
+-5.3
+</td>
+<td style="text-align:left;">
+-0.9
+</td>
+<td style="text-align:left;">
+-14.2
+</td>
+<td style="text-align:left;">
+-1.5
+</td>
+<td style="text-align:left;">
+2824
+</td>
+<td style="text-align:left;">
++5
+</td>
+<td style="text-align:left;">
+1.4
+</td>
+<td style="text-align:left;">
+0/1
+</td>
+<td style="text-align:left;">
+50%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+SI
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:left;">
+91.3
+</td>
+<td style="text-align:left;">
+-0.1
+</td>
+<td style="text-align:left;">
+0.0
+</td>
+<td style="text-align:left;">
+-3.9
+</td>
+<td style="text-align:left;">
+15.4
+</td>
+<td style="text-align:left;">
+-0.3
+</td>
+<td style="text-align:left;">
+2337
+</td>
+<td style="text-align:left;">
+-8
+</td>
+<td style="text-align:left;">
+2.2
+</td>
+<td style="text-align:left;">
+0/2
+</td>
+<td style="text-align:left;">
+33%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+FC
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+86.3
+</td>
+<td style="text-align:left;">
+-1.2
+</td>
+<td style="text-align:left;">
+0.4
+</td>
+<td style="text-align:left;">
+-2.7
+</td>
+<td style="text-align:left;">
+-2.0
+</td>
+<td style="text-align:left;">
+-0.8
+</td>
+<td style="text-align:left;">
+2903
+</td>
+<td style="text-align:left;">
++136
+</td>
+<td style="text-align:left;">
+2.5
+</td>
+<td style="text-align:left;">
+0/1
+</td>
+<td style="text-align:left;">
+50%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+FF
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+92.8
+</td>
+<td style="text-align:left;">
++0.8
+</td>
+<td style="text-align:left;">
+14.6
+</td>
+<td style="text-align:left;">
++1.0
+</td>
+<td style="text-align:left;">
+12.6
+</td>
+<td style="text-align:left;">
++4.5
+</td>
+<td style="text-align:left;">
+2608
+</td>
+<td style="text-align:left;">
++105
+</td>
+<td style="text-align:left;">
+1.2
+</td>
+<td style="text-align:left;">
+1/1
+</td>
+<td style="text-align:left;">
+100%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+CH
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+84.0
+</td>
+<td style="text-align:left;">
+-1.3
+</td>
+<td style="text-align:left;">
+1.3
+</td>
+<td style="text-align:left;">
++3.7
+</td>
+<td style="text-align:left;">
+9.7
+</td>
+<td style="text-align:left;">
+-2.8
+</td>
+<td style="text-align:left;">
+1151
+</td>
+<td style="text-align:left;">
+-221
+</td>
+<td style="text-align:left;">
+1.7
+</td>
+<td style="text-align:left;">
+0/0
+</td>
+<td style="text-align:left;">
+100%
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+</tbody>
+</table>
+<div class="foot" style="border:0;margin-top:2px">
+Δ = today minus his season average before today, same pitch type. Flags:
+velo down ≥1.5 mph, IVB or HB moved ≥2 in, or release point moved ≥4 in;
+pitch types with fewer than 5 pitches are never flagged. Release
+coordinates carry park-to-park calibration error, so a release flag is a
+prompt to check video, not a conclusion.
+</div>
+</div>
+<div id="workload" class="section level2">
+<h2>Workload</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+Pitcher
+</th>
+<th style="text-align:right;">
+Pitches today
+</th>
+<th style="text-align:right;">
+Days rest before
+</th>
+<th style="text-align:right;">
+Pitches, last 7 days
+</th>
+<th style="text-align:right;">
+Apps, last 3 days
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Daniel Lynch IV
+</td>
+<td style="text-align:right;">
+76
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+154
+</td>
+<td style="text-align:right;">
+1
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Lucas Erceg
+</td>
+<td style="text-align:right;">
+17
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+51
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Connor Thomas
+</td>
+<td style="text-align:right;">
+11
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+55
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Nate Pearson
+</td>
+<td style="text-align:right;">
+9
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+32
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Nolan Hoffman
+</td>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+51
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="matchup-sheet-cle-hitters-who-batted-today" class="section level2">
+<h2>Matchup sheet: CLE hitters who batted today</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+Hitter
+</th>
+<th style="text-align:left;">
+Bats
+</th>
+<th style="text-align:left;">
+Pitches seen (season)
+</th>
+<th style="text-align:left;">
+Chase%
+</th>
+<th style="text-align:left;">
+Attack with
+</th>
+<th style="text-align:left;">
+Avoid
+</th>
+<th style="text-align:left;">
+Put-away
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Jo Adell
+</td>
+<td style="text-align:left;">
+R
+</td>
+<td style="text-align:left;">
+2,559
+</td>
+<td style="text-align:left;">
+35%
+</td>
+<td style="text-align:left;">
+Breaking (+0.4)
+</td>
+<td style="text-align:left;">
+Offspeed (-0.6)
+</td>
+<td style="text-align:left;">
+Offspeed (36% whiff)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Travis Bazzana
+</td>
+<td style="text-align:left;">
+L
+</td>
+<td style="text-align:left;">
+2,082
+</td>
+<td style="text-align:left;">
+27%
+</td>
+<td style="text-align:left;">
+Breaking (+0.7)
+</td>
+<td style="text-align:left;">
+Offspeed (+0.1)
+</td>
+<td style="text-align:left;">
+Offspeed (35% whiff)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Nathaniel Lowe
+</td>
+<td style="text-align:left;">
+L
+</td>
+<td style="text-align:left;">
+1,763
+</td>
+<td style="text-align:left;">
+27%
+</td>
+<td style="text-align:left;">
+Breaking (+0.2)
+</td>
+<td style="text-align:left;">
+Offspeed (-1.1)
+</td>
+<td style="text-align:left;">
+Breaking (32% whiff)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Angel Martínez
+</td>
+<td style="text-align:left;">
+S
+</td>
+<td style="text-align:left;">
+1,491
+</td>
+<td style="text-align:left;">
+43%
+</td>
+<td style="text-align:left;">
+Offspeed (+1.9)
+</td>
+<td style="text-align:left;">
+Breaking (-0.6)
+</td>
+<td style="text-align:left;">
+Breaking (28% whiff)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Patrick Bailey
+</td>
+<td style="text-align:left;">
+S
+</td>
+<td style="text-align:left;">
+1,358
+</td>
+<td style="text-align:left;">
+31%
+</td>
+<td style="text-align:left;">
+Fastball (+0.6)
+</td>
+<td style="text-align:left;">
+Breaking (+0.2)
+</td>
+<td style="text-align:left;">
+Breaking (35% whiff)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Daniel Schneemann
+</td>
+<td style="text-align:left;">
+L
+</td>
+<td style="text-align:left;">
+1,130
+</td>
+<td style="text-align:left;">
+33%
+</td>
+<td style="text-align:left;">
+Breaking (+0.5)
+</td>
+<td style="text-align:left;">
+Fastball (+0.2)
+</td>
+<td style="text-align:left;">
+Offspeed (38% whiff)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Austin Hedges
+</td>
+<td style="text-align:left;">
+R
+</td>
+<td style="text-align:left;">
+933
+</td>
+<td style="text-align:left;">
+25%
+</td>
+<td style="text-align:left;">
+Breaking (+1.2)
+</td>
+<td style="text-align:left;">
+Offspeed (-2.3)
+</td>
+<td style="text-align:left;">
+Offspeed (35% whiff)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+David Fry
+</td>
+<td style="text-align:left;">
+R
+</td>
+<td style="text-align:left;">
+904
+</td>
+<td style="text-align:left;">
+27%
+</td>
+<td style="text-align:left;">
+Breaking (+0.8)
+</td>
+<td style="text-align:left;">
+Offspeed (-0.1)
+</td>
+<td style="text-align:left;">
+Offspeed (37% whiff)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Petey Halpin
+</td>
+<td style="text-align:left;">
+L
+</td>
+<td style="text-align:left;">
+655
+</td>
+<td style="text-align:left;">
+39%
+</td>
+<td style="text-align:left;">
+Breaking (+1.0)
+</td>
+<td style="text-align:left;">
+Fastball (+0.6)
+</td>
+<td style="text-align:left;">
+Fastball (27% whiff)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Angel Genao
+</td>
+<td style="text-align:left;">
+S
+</td>
+<td style="text-align:left;">
+519
+</td>
+<td style="text-align:left;">
+27%
+</td>
+<td style="text-align:left;">
+Breaking (+1.5)
+</td>
+<td style="text-align:left;">
+Offspeed (+0.4)
+</td>
+<td style="text-align:left;">
+Breaking (37% whiff)
+</td>
+</tr>
+</tbody>
+</table>
+<div class="foot" style="border:0;margin-top:2px">
+Attack / Avoid = pitch group (Fastball / Breaking / Offspeed) with the
+best / worst pitcher run value per 100 pitches against this hitter this
+season (pitcher’s view, + = good for us), shrunk toward league average
+with a 60-pitch prior. Put-away = group with the highest shrunk whiff
+rate per swing.
+</div>
+<div class="foot">
+Source: Baseball Savant Statcast search (baseballsavant.mlb.com)
+pitch-level data, regular season; names from the MLB Stats API. Rebuilt
+end-to-end by <code>make report</code>. Independent portfolio sample;
+not produced by or affiliated with any MLB club.
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+
+</body>
+</html>

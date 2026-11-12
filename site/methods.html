@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Methods & Code · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
+<meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/plotly.min.js" defer></script><script src="assets/app.js" defer></script>
+</head><body>
+<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Pitcher Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods & Code</a></li></ul></div></nav>
+<section style="padding-top:44px"><div class="wrap">
+  <div class="eyebrow">Methods &amp; code</div>
+  <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">How it's built</h1>
+  <p class="muted" style="max-width:820px">A small, reproducible pipeline designed the way I'd want a club's daily pipeline to work: raw data in, versioned SQL transforms, R for modeling and reports, and static outputs anyone can open. Python is only used for the download and page assembly.</p>
+  <div class="pipeline" style="margin:22px 0">
+    <div class="step"><b>Baseball Savant</b><br><span class="muted">daily CSV pulls · Python</span></div><span class="arrow">→</span>
+    <div class="step"><b>DuckDB</b><br><span class="muted">sql/01–07 · features, VAA, tunnels</span></div><span class="arrow">→</span>
+    <div class="step"><b>R · xgboost</b><br><span class="muted">Stuff+ · validation</span></div><span class="arrow">→</span>
+    <div class="step"><b>R · analysis</b><br><span class="muted">shrinkage · JSON exports</span></div><span class="arrow">→</span>
+    <div class="step"><b>R Markdown</b><br><span class="muted">daily report · pitcher cards</span></div><span class="arrow">→</span>
+    <div class="step"><b>Static site + PDFs</b><br><span class="muted">HTML/CSS/JS · Plotly · Chrome</span></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h3>Data</h3><ul style="margin:0;padding-left:18px">
+      <li>Source: Baseball Savant Statcast search CSV, regular season 2026, all 30 clubs, pulled one day per request.</li>
+      <li><span data-meta="n_pitches"></span> pitches in <span data-meta="n_games"></span> games, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>, after dropping pitchouts, intentional balls and unclassified pitches.</li>
+      <li>Royals pitchers: <span data-meta="n_royals"></span> pitches by <span data-meta="n_royals_pitchers"></span> pitchers. The explorer shows the 20 with 300+.</li>
+      <li>Player names come from the MLB Stats API. The raw CSVs (~470 MB) stay outside the site, which ships only small pre-aggregated JSON.</li></ul></div>
+    <div class="card"><h3>Key definitions</h3><ul style="margin:0;padding-left:18px">
+      <li><b>IVB / HB</b>: Statcast <code>pfx_z</code>, <code>pfx_x</code> in inches. HB is mirrored for lefties (+ = arm side).</li>
+      <li><b>VAA</b>: angle at y = 17/12 ft from the 9-parameter fit. <b>Location-adjusted VAA</b> = residual of VAA regressed on zone-normalized height.</li>
+      <li><b>Tunnel gap</b>: distance between consecutive pitches 23.8 ft in front of the plate, back-solved from plate location.</li>
+      <li><b>xRV</b>: pitch run value (<code>delta_run_exp</code>, pitcher view). Balls in play are replaced by the league-average value for that exit velocity, launch angle and count.</li>
+      <li><b>Shrinkage</b>: (sum + k·league) / (n + k), with k = 250 pitches for run values and k = 60 for hitter splits.</li></ul></div>
+  </div>
+  <h3 style="margin-top:30px">Reproduce it</h3>
+<pre>git clone https://github.com/devin182/royals-pitching-rd.git &amp;&amp; cd royals-pitching-rd
+make all        # fetch → sql → model → analysis → reports → pdf → pages   (about 15 min, mostly download)
+make report     # rebuild only the daily report + pitcher cards from the existing database
+python3 -m http.server -d site 8000</pre>
+  <h3 style="margin-top:30px">Code</h3>
+  <p class="muted">The real files from the pipeline, loaded as-is. Full repo: <a href="https://github.com/devin182/royals-pitching-rd">github.com/devin182/royals-pitching-rd</a>.</p>
+  <div class="pill" id="files" style="margin-bottom:12px"></div>
+  <pre id="code">Loading…</pre>
+</div></section>
+<script>
+const FILES=['02_features.sql','03_arsenal.sql','05_counts.sql','06_daily_report.sql','02_stuff_model.R','03_analysis.R','daily_report.Rmd','pitcher_card.Rmd','01_build_db.R','01_load.sql','04_location.sql','Makefile'];
+function hl(src,isSQL){ let s=src.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  s=s.replace(/(--[^\n]*|#[^\n{]*$)/gm,'<span class="cm">$1</span>');
+  const kw=isSQL?/\b(SELECT|FROM|WHERE|GROUP BY|ORDER BY|JOIN|LEFT JOIN|USING|WITH|AS|CASE|WHEN|THEN|ELSE|END|CREATE OR REPLACE TABLE|FILTER|OVER|PARTITION BY|QUALIFY|HAVING|AND|OR|NOT|IN|BETWEEN|LATERAL|CROSS JOIN|WINDOW|IS NULL|IS NOT NULL)\b/g:/\b(function|library|for|if|else|in|return|list|lapply)\b/g;
+  return s.replace(kw,'<span class="kw">$1</span>'); }
+document.addEventListener('DOMContentLoaded',()=>{
+  const box=document.getElementById('files');
+  box.innerHTML=FILES.map((f,i)=>`<button data-f="${f}" class="${i?'':'on'}">${f}</button>`).join('');
+  const show=f=>fetch('code/'+f+'.txt').then(r=>r.text()).then(t=>{document.getElementById('code').innerHTML=hl(t,f.endsWith('.sql'));
+    box.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.f===f));});
+  box.querySelectorAll('button').forEach(b=>b.onclick=()=>show(b.dataset.f)); show(FILES[0]); });
+</script>
+<footer><div class="wrap">
+<p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
+Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
+</div></footer></body></html>

@@ -1,0 +1,99 @@
+<section style="padding-top:44px"><div class="wrap">
+  <div class="eyebrow">Interactive</div>
+  <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">Pitcher Explorer</h1>
+  <p class="muted" style="max-width:780px">Pick any Royals pitcher with 300+ pitches in 2026. Movement, release, location and count usage all come from his actual pitches. Movement is from the pitcher's arm side (+ = arm side) so righties and lefties read the same way. Charts use a random sample of up to 450 pitches; the table uses every pitch.</p>
+  <div class="controls">
+    <label class="ctl">Pitcher<select id="pick"></select></label>
+    <div id="summary" class="muted" style="padding-bottom:9px"></div>
+    <a id="cardlink" class="btn" style="margin-left:auto" target="_blank">Printable pitcher card ↗</a>
+  </div>
+  <div class="tblwrap"><table class="tbl" id="ars"></table></div>
+  <p class="caption">Velo/Max in mph · Spin in rpm · IVB/HB in inches · Ext = extension (ft) · VAA = vertical approach angle (°) · Rel Δ = release-point offset from his primary fastball (inches, height / side) · Whiff = whiffs per swing · Chase = swing rate out of zone · CSW = called + swinging strikes per pitch · RV/100 = run value per 100 pitches, pitcher's view (+ is good) · Stuff+ = this project's shape-only model (100 = MLB average, see <a href="research.html#stuff">Research</a>).</p>
+  <div class="grid g2" style="margin-top:22px">
+    <div><div id="mv" class="chart"></div><p class="caption">Movement profile: dots are pitches, rings are pitch-type averages. Read it like a pitch-design chart.</p></div>
+    <div><div id="rel" class="chart"></div><p class="caption">Release points (catcher's view, mirrored so arm side is +). If pitch types separate here, hitters may be able to pick them up early.</p></div>
+  </div>
+  <div class="controls" style="margin-top:26px"><div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Location: pitch type</div><div class="pill" id="ptpick"></div></div>
+    <div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Show</div><div class="pill" id="metric"><button data-m="n" class="on">Frequency</button><button data-m="w">Whiff / swing</button></div></div>
+    <div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Batter side</div><div class="pill" id="side"><button data-s="all" class="on">All</button><button data-s="L">vs LHH</button><button data-s="R">vs RHH</button></div></div></div>
+  <div class="grid g2">
+    <div><div id="heat" class="chart tall"></div><p class="caption">Catcher's view. Height is scaled to each hitter's strike zone (0 = bottom, 1 = top). Whiff map shows only cells with 4+ swings.</p></div>
+    <div><div id="cnt" class="chart tall"></div><p class="caption">Pitch mix in every count. Pitchers with stable usage are harder to sit on; big swings from count to count show what hitters can look for.</p></div>
+  </div>
+</div></section>
+<script>
+let DATA=[], CUR=null, PT=null, MET='n', SIDE='all';
+function arsTable(p){
+  const h=['Pitch','#','Usage','Velo','Max','Spin','IVB','HB','Ext','Arm°','VAA','Rel Δ','Whiff','Chase','CSW','xwOBAcon','RV/100','Stuff+'];
+  const rows=p.arsenal.map(a=>`<tr><td><span style="color:${PAL[a.pitch_type]||'#ccc'}">●</span> ${a.pitch_name||NAMES[a.pitch_type]} <span class="muted">${a.pitch_type}</span></td>
+   <td>${a.n}</td><td>${pct(a.usage)}</td><td>${fmt(a.velo)}</td><td>${fmt(a.velo_max)}</td><td>${fmt(a.spin,0)}</td><td>${fmt(a.ivb)}</td><td>${fmt(a.hb_arm)}</td>
+   <td>${fmt(a.extension)}</td><td>${fmt(a.arm_angle,0)}</td><td>${fmt(a.vaa)}</td><td>${sgn(a.rel_dz_in)} / ${sgn(a.rel_dx_in)}</td>
+   <td>${pct(a.whiff_rate)}</td><td>${pct(a.chase_rate)}</td><td>${pct(a.csw_rate)}</td><td>${a.xwoba_con==null?'–':fmt(a.xwoba_con,3).replace(/^0/,'')}</td>
+   <td style="color:${a.rv100>0?'var(--good)':a.rv100<0?'var(--bad)':'inherit'}">${sgn(a.rv100,2)}</td>
+   <td><span class="sp" style="background:${stuffColor(a.stuff_plus)}">${a.stuff_plus??'–'}</span></td></tr>`).join('');
+  document.getElementById('ars').innerHTML=`<thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows}</tbody>`;
+}
+function movement(p){
+  const types=p.arsenal.map(a=>a.pitch_type);
+  const tr=types.map(t=>{const s=p.pitches.filter(x=>x.pitch_type===t);
+    return {x:s.map(x=>x.hb),y:s.map(x=>x.ivb),text:s.map(x=>`${t} ${x.v} mph`),mode:'markers',type:'scatter',name:t,
+      marker:{color:PAL[t],size:6,opacity:.55},hovertemplate:'%{text}<br>HB %{x}" · IVB %{y}"<extra></extra>'};});
+  tr.push({x:p.arsenal.map(a=>a.hb_arm),y:p.arsenal.map(a=>a.ivb),mode:'markers+text',type:'scatter',name:'avg',showlegend:false,
+    text:types,textposition:'top center',textfont:{color:'#E8EEF4',size:11},marker:{size:16,color:'rgba(0,0,0,0)',line:{color:types.map(t=>PAL[t]),width:3}},hoverinfo:'skip'});
+  Plotly.react('mv',tr,LAYOUT({title:{text:'Movement (inches)',font:{size:14}},xaxis:{title:'Horizontal break · arm side →',range:[-25,25],gridcolor:'#1f3d66',zerolinecolor:'#4d6d96'},
+    yaxis:{title:'Induced vertical break',range:[-25,25],scaleanchor:'x',gridcolor:'#1f3d66',zerolinecolor:'#4d6d96'}}),CFG);
+}
+function release(p){
+  const types=p.arsenal.map(a=>a.pitch_type);
+  const tr=types.map(t=>{const s=p.pitches.filter(x=>x.pitch_type===t);
+    return {x:s.map(x=>x.rx),y:s.map(x=>x.rz),mode:'markers',type:'scatter',name:t,marker:{color:PAL[t],size:5,opacity:.55},hovertemplate:t+' side %{x} ft · height %{y} ft<extra></extra>'};});
+  Plotly.react('rel',tr,LAYOUT({title:{text:'Release point (ft)',font:{size:14}},xaxis:{title:'Release side · arm side →',gridcolor:'#1f3d66'},yaxis:{title:'Release height',scaleanchor:'x',gridcolor:'#1f3d66'}}),CFG);
+}
+function heat(p){
+  const xs=[],zs=[]; for(let x=-1.875;x<=1.88;x+=.25) xs.push(+x.toFixed(3)); for(let z=-0.6875;z<=1.69;z+=.125) zs.push(+z.toFixed(4));
+  const N=zs.map(()=>xs.map(()=>0)), S=zs.map(()=>xs.map(()=>0)), W=zs.map(()=>xs.map(()=>0));
+  p.heat.filter(h=>h.pitch_type===PT && (SIDE==='all'||h.stand===SIDE)).forEach(h=>{
+    const i=zs.findIndex(z=>Math.abs(z-h.z_bin)<1e-3), j=xs.findIndex(x=>Math.abs(x-h.x_bin)<1e-3);
+    if(i>=0&&j>=0){N[i][j]+=h.n;S[i][j]+=h.swings;W[i][j]+=h.whiffs;}});
+  let Z, title, cs;
+  if(MET==='n'){ // light smoothing for readability (3x3 box)
+    Z=N.map((r,i)=>r.map((_,j)=>{let s=0,c=0;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const v=N[i+a]?.[j+b];if(v!=null){s+=v*(a==0&&b==0?2:1);c+=(a==0&&b==0?2:1);}}return s/c;}));
+    title=`${PT} location frequency`; cs=[[0,'rgba(11,31,58,0)'],[.15,'#16365f'],[.5,'#4f86c6'],[.8,'#7AB2DD'],[1,'#E8EEF4']];
+  } else { Z=W.map((r,i)=>r.map((w,j)=>S[i][j]>=4? w/S[i][j] : null)); title=`${PT} whiff per swing`; cs=[[0,'#16365f'],[.5,'#7AB2DD'],[1,'#C9A227']]; }
+  const total=N.flat().reduce((a,b)=>a+b,0);
+  Plotly.react('heat',[{z:Z,x:xs,y:zs,type:'heatmap',colorscale:cs,zsmooth:MET==='n'?'best':false,showscale:MET!=='n',
+     colorbar:{tickformat:'.0%',thickness:10,len:.6}, hovertemplate:MET==='n'?'x %{x} · z %{y}<extra></extra>':'whiff %{z:.0%}<extra></extra>', zmin:MET==='n'?undefined:0, zmax:MET==='n'?undefined:.6}],
+    LAYOUT({title:{text:`${title} · ${total} pitches`,font:{size:14}},
+      xaxis:{title:'Plate side (ft) · catcher view',range:[-2,2],gridcolor:'rgba(0,0,0,0)',zeroline:false},
+      yaxis:{title:'Height in zone (0 = bottom, 1 = top)',range:[-0.75,1.75],gridcolor:'rgba(0,0,0,0)',zeroline:false},
+      shapes:[{type:'rect',x0:-0.83,x1:0.83,y0:0,y1:1,line:{color:'#C9A227',width:2}},
+              {type:'line',x0:-0.83,x1:0.83,y0:1/3,y1:1/3,line:{color:'rgba(201,162,39,.35)',width:1}},{type:'line',x0:-0.83,x1:0.83,y0:2/3,y1:2/3,line:{color:'rgba(201,162,39,.35)',width:1}},
+              {type:'line',x0:-0.277,x1:-0.277,y0:0,y1:1,line:{color:'rgba(201,162,39,.35)',width:1}},{type:'line',x0:0.277,x1:0.277,y0:0,y1:1,line:{color:'rgba(201,162,39,.35)',width:1}}]}),CFG);
+}
+function counts(p){
+  const order=['0-0','1-0','2-0','3-0','0-1','1-1','2-1','3-1','0-2','1-2','2-2','3-2'];
+  const types=p.arsenal.map(a=>a.pitch_type); const tot={}; p.counts.forEach(c=>{tot[c.count_state]=(tot[c.count_state]||0)+c.n;});
+  const tr=types.map(t=>({type:'bar',name:t,x:order,marker:{color:PAL[t]},
+    y:order.map(o=>{const r=p.counts.find(c=>c.count_state===o&&c.pitch_type===t);return r&&tot[o]?r.n/tot[o]:0;}),
+    customdata:order.map(o=>tot[o]||0),hovertemplate:t+' %{y:.0%} of %{customdata} pitches in %{x}<extra></extra>'}));
+  Plotly.react('cnt',tr,LAYOUT({barmode:'stack',title:{text:'Pitch mix by count',font:{size:14}},yaxis:{tickformat:'.0%',range:[0,1],gridcolor:'#1f3d66'},xaxis:{title:'Count (balls-strikes)',type:'category'}}),CFG);
+}
+function render(){
+  const p=CUR; arsTable(p); movement(p); release(p); counts(p);
+  const types=p.arsenal.map(a=>a.pitch_type); if(!types.includes(PT)) PT=types.find(t=>!['FF','SI'].includes(t))||types[0];
+  document.getElementById('ptpick').innerHTML=types.map(t=>`<button data-t="${t}" class="${t===PT?'on':''}">${t}</button>`).join('');
+  document.querySelectorAll('#ptpick button').forEach(b=>b.onclick=()=>{PT=b.dataset.t;render();});
+  heat(p);
+  document.getElementById('summary').textContent=`${p.throws==='R'?'RHP':'LHP'} · ${p.games} games · ${p.n.toLocaleString()} pitches`;
+  document.getElementById('cardlink').href=`reports/cards/${p.id}.html`;
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  getJSON('data/explorer.json').then(d=>{ DATA=d; const sel=document.getElementById('pick');
+    sel.innerHTML=d.map((p,i)=>`<option value="${i}">${nice(p.name)} (${p.throws}HP, ${p.n.toLocaleString()} pitches)</option>`).join('');
+    const want=new URLSearchParams(location.search).get('p'); const idx=Math.max(0,d.findIndex(p=>String(p.id)===want));
+    sel.value=idx; CUR=d[idx]; render(); sel.onchange=()=>{CUR=d[sel.value];render();};
+    document.querySelectorAll('#metric button').forEach(b=>b.onclick=()=>{MET=b.dataset.m;document.querySelectorAll('#metric button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
+    document.querySelectorAll('#side button').forEach(b=>b.onclick=()=>{SIDE=b.dataset.s;document.querySelectorAll('#side button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
+  });
+});
+</script>
