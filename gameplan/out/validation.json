@@ -1,0 +1,120 @@
+{
+  "pitch_level": {
+    "n_train": 483705,
+    "n_test": 228307,
+    "split_date": "2026-08-01",
+    "rmse_count_only": 0.16867,
+    "rmse_pitch_model": 0.16316,
+    "rmse_matchup": 0.16314,
+    "rmse_matchup_res": 0.16316,
+    "r2_pitch_model_vs_count": 0.06424,
+    "r2_matchup_vs_count": 0.06441,
+    "r2_matchup_res_vs_count": 0.06424,
+    "r2_hitter_gain_over_pitch_model": 0.00018,
+    "res_k": 300,
+    "res_k_sensitivity": [
+      {
+        "k": 50,
+        "r2_vs_count": 0.06148
+      },
+      {
+        "k": 150,
+        "r2_vs_count": 0.06371
+      },
+      {
+        "k": 300,
+        "r2_vs_count": 0.06424
+      },
+      {
+        "k": 600,
+        "r2_vs_count": 0.06442
+      },
+      {
+        "k": 1200,
+        "r2_vs_count": 0.06445
+      }
+    ],
+    "auc_whiff_on_swings_matchup": 0.4668,
+    "auc_whiff_on_swings_pitch_model": 0.47201
+  },
+  "cell_level": {
+    "n_cells": 1826,
+    "min_test_pitches": 40,
+    "cor_model": 0.72345,
+    "cor_model_no_hitter": 0.71159,
+    "cor_raw_split": 0.60238,
+    "rmse_model_per100": 2.44527,
+    "rmse_raw_split_per100": 3.03172,
+    "cor_hitter_adjustment_model": 0.2502,
+    "cor_hitter_adjustment_raw_split": 0.16417,
+    "within_hitter_spearman_model": 0.70375,
+    "within_hitter_spearman_no_hitter": 0.70464,
+    "n_hitters_ranked": 178
+  },
+  "calibration": [
+    {
+      "dec": 1,
+      "pred100": -8.03778,
+      "actual100": -8.38366,
+      "n": 22831
+    },
+    {
+      "dec": 2,
+      "pred100": -3.3618,
+      "actual100": -3.47314,
+      "n": 22831
+    },
+    {
+      "dec": 3,
+      "pred100": -2.03642,
+      "actual100": -2.41834,
+      "n": 22830
+    },
+    {
+      "dec": 4,
+      "pred100": -0.92926,
+      "actual100": -0.83629,
+      "n": 22831
+    },
+    {
+      "dec": 5,
+      "pred100": 0.005,
+      "actual100": 0.18763,
+      "n": 22831
+    },
+    {
+      "dec": 6,
+      "pred100": 0.85298,
+      "actual100": 1.2193,
+      "n": 22830
+    },
+    {
+      "dec": 7,
+      "pred100": 1.66763,
+      "actual100": 1.8806,
+      "n": 22831
+    },
+    {
+      "dec": 8,
+      "pred100": 2.48995,
+      "actual100": 2.73056,
+      "n": 22830
+    },
+    {
+      "dec": 9,
+      "pred100": 3.45915,
+      "actual100": 3.76781,
+      "n": 22831
+    },
+    {
+      "dec": 10,
+      "pred100": 5.81303,
+      "actual100": 6.22357,
+      "n": 22831
+    }
+  ],
+  "nrounds": {
+    "pitch_model": 490,
+    "matchup": 444
+  }
+}

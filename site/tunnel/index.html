@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pitch tunnel viewer · Devin Jenkinson · Pitching R&amp;D</title>
+  <meta name="description" content="3D catcher's-eye view of average 2026 Royals pitch trajectories, with y-matched separation at the 23.8 ft commit point and at the plate.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .site-links{display:flex;gap:4px;margin-left:auto;overflow-x:auto;scrollbar-width:none;list-style:none;padding:0;margin-top:0;margin-bottom:0}
+    .site-links a{display:block;white-space:nowrap;color:#9AA3B5;text-decoration:none;font-size:14px;padding:6px 10px;border-radius:6px}
+    .site-links a:hover{color:#E8EEF4}.site-links a.on{color:#E8EEF4;background:#13305A}
+    .nav .brand{color:#E8EEF4;text-decoration:none;font-weight:600;white-space:nowrap}
+    .bias-note{border-left:2.5pt solid #C9A227;padding-left:8px}
+    @media (max-width:760px){.nav-inner{flex-wrap:wrap;height:auto;padding:8px 14px}.site-links{margin-left:0;width:100%}}
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.min.js",
+      "three/addons/controls/OrbitControls.js": "./vendor/OrbitControls.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="nav"><!--site-nav--><div class="nav-inner"><a class="brand" href="../index.html">Devin Jenkinson <span>· Pitching R&amp;D</span></a><ul class="site-links"><li><a href="../index.html">Home</a></li><li><a href="../explorer.html">Pitcher Explorer</a></li><li><a href="../research.html">Research</a></li><li><a href="../tunnel/index.html" class=on>Tunnel Viewer</a></li><li><a href="../gameplan.html">Game Plan</a></li><li><a href="../reports.html">Reports</a></li><li><a href="../methods.html">Methods & Code</a></li></ul></div><!--/site-nav--></header>
+  <main>
+    <h1>Pitch tunnel viewer</h1>
+    <p class="lead">Compare any two pitch types for a 2026 Royals pitcher. Paths are the average Statcast trajectory of each type. The gold plane is the commit point, 23.8 ft in front of the plate.</p>
+
+    <div class="toolbar">
+      <label class="ctl grow">Pitcher
+        <select id="pitcher"></select>
+      </label>
+      <label class="ctl grow"><span><i class="swatch a"></i>Pitch A</span>
+        <select id="pitchA"></select>
+      </label>
+      <label class="ctl grow"><span><i class="swatch b"></i>Pitch B</span>
+        <select id="pitchB"></select>
+      </label>
+      <div class="btns">
+        <button type="button" id="orbitBtn" aria-pressed="false">Orbit view</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="kpi"><b id="sepCommit">—</b><span>Separation at commit (y-matched)</span></div>
+      <div class="kpi"><b id="sepPlate">—</b><span>Separation at the plate (y-matched)</span></div>
+      <div class="kpi"><b class="a" id="veloA">—</b><span id="labA">Pitch A velocity</span></div>
+      <div class="kpi"><b class="b" id="veloB">—</b><span id="labB">Pitch B velocity</span></div>
+    </div>
+
+    <div id="stage">
+      <canvas id="c3"></canvas>
+      <div id="fallback" aria-label="2D fallback views">
+        <div class="view">
+          <span class="view-lab">Side view</span>
+          <canvas id="cSide"></canvas>
+        </div>
+        <div class="view">
+          <span class="view-lab">Top view</span>
+          <canvas id="cTop"></canvas>
+        </div>
+      </div>
+      <div class="transport">
+        <button type="button" id="playBtn" class="primary">Play</button>
+        <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Flight progress">
+        <span class="badge" id="clock">0.00 s · 8× slow motion</span>
+      </div>
+    </div>
+
+    <p class="caption bias-note">Each path is that pitch type's <strong>average</strong> Statcast trajectory, not a single pitch. Flying the averaged 9 parameters to the plate puts the path about 1 inch higher than the average observed plate height (mean |Δ| 0.98 in vertical, 0.25 in horizontal across 120 pitch types), so read separations to the nearest inch.</p>
+    <p class="caption">
+      <strong>Method.</strong> Each path is the average of that pitcher's pitches of one type in the 2026 regular season (minimum 30 pitches).
+      Trajectories are rebuilt from Statcast's constant-acceleration model: velocity and acceleration
+      (<span class="mono">vx0, vy0, vz0, ax, ay, az</span>) are defined at <span class="mono">y = 50</span> ft,
+      then solved back to release (<span class="mono">y = 60.5</span> ft minus extension) and forward to the front of the plate
+      (<span class="mono">y = 17/12</span> ft). <strong>Separation is y-matched</strong> — the distance in the x–z plane
+      at the same distance from the plate — at the commit point (23.8 ft in front of the plate, about when a hitter has to decide)
+      and again at the plate, in inches. Playback is time-synchronized at release, in 8× slow motion; the faster pitch reaches the plate first.
+      Data: Baseball Savant Statcast via this repo's DuckDB. No club marks are used.
+    </p>
+  </main>
+  <footer>
+    Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club.
+    Team abbreviations and player names are used only to describe public data.
+    Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (2026 regular season). Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> <a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml"><img src="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml/badge.svg" alt="CI status" style="vertical-align:middle;height:20px"></a> · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a>
+  </footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

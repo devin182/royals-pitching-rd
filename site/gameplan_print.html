@@ -1,0 +1,59 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Game plan · print</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+@page{size:Letter;margin:0.38in}
+*{box-sizing:border-box} body{margin:0;font-family:'IBM Plex Sans',Arial,sans-serif;color:#0B1F3A;font-size:8.6pt;line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:7.74in;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #0B1F3A;padding-bottom:5px}
+h1{font-family:Archivo,Arial;font-size:17pt;margin:0;line-height:1.05} .sub{color:#4a5a73;font-size:8.4pt}
+.tag{font-family:'JetBrains Mono',monospace;font-size:7.4pt;color:#8a6d0a;letter-spacing:.1em;text-transform:uppercase}
+.ars{margin:5px 0 6px;font-size:7.9pt;color:#33445e}
+.take{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:7px}
+.take div{border-left:3px solid #C9A227;background:#f6f1df;padding:5px 7px;border-radius:0 6px 6px 0;font-size:8pt}
+.take b{display:block;font-family:Archivo,Arial;font-size:8.4pt;letter-spacing:.06em;text-transform:uppercase;color:#0B1F3A}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.card{border:1px solid #c9d3e0;border-radius:7px;padding:7px 7px;break-inside:avoid}
+.card h3{font-family:Archivo,Arial;font-size:9.4pt;margin:0 0 2px;display:flex;justify-content:space-between}
+.card h3 span{font-family:'IBM Plex Sans';font-weight:400;color:#5b6b7f;font-size:7.4pt}
+.row{display:grid;grid-template-columns:0.95in 1fr;gap:5px;align-items:start}
+.row svg{width:0.95in;display:block}
+.ln{font-size:7.2pt;margin:0 0 1.5px;white-space:nowrap} .ln b{display:inline-block;width:33px;color:#5b6b7f;font-weight:600}
+.pos{color:#11804a;font-family:'JetBrains Mono';font-weight:600} .neg{color:#c0392b;font-family:'JetBrains Mono';font-weight:600}
+.prof{font-size:6.9pt;color:#5b6b7f;margin-top:2px}
+.foot{margin-top:6px;font-size:6.6pt;color:#5b6b7f;border-top:1px solid #c9d3e0;padding-top:4px}
+.zl{font-size:6.6pt;color:#5b6b7f;text-align:center}
+</style><script src="gameplan_data.js"></script></head><body><div class="page" id="pg"></div>
+<script>
+const NAMES={FF:'4-Seam',SI:'Sinker',FC:'Cutter',SL:'Slider',ST:'Sweeper',SV:'Slurve',CU:'Curve',KC:'Kn-Curve',CH:'Change',FS:'Splitter',FO:'Fork',KN:'Knuckle'};
+const REG={'Up-In':'up-in','Up-Middle':'up-mid','Up-Away':'up-away','Mid-In':'mid-in','Mid-Middle':'heart','Mid-Away':'mid-away','Low-In':'low-in','Low-Middle':'low-mid','Low-Away':'low-away','Above zone':'above zone','Off plate in':'off plate in','Off plate away':'off plate away','Below zone':'below zone'};
+const f1=x=>x==null?'–':(x>0?'+':'')+Number(x).toFixed(1); const v=x=>`<span class="${x>0?'pos':'neg'}">${f1(x)}</span>`;
+function col(x,m=4){const t=Math.max(-1,Math.min(1,x/m)),k=Math.abs(t)**0.8,a=[244,246,250],c=t>=0?[46,170,110]:[226,92,76];return `rgb(${a.map((z,i)=>Math.round(z+(c[i]-z)*k)).join(',')})`;}
+function zone(G,grid,stand){const W=100,c=20,inL=stand==='R',m={In:inL?1:3,Middle:2,Away:inL?3:1};
+  return `<svg viewBox="0 0 100 100">`+G.regions.map((r,i)=>{let x,y,w=c,h=c;
+   if(r.includes('-')&&!r.startsWith('Off')){const [a,b]=r.split('-');y={Up:1,Mid:2,Low:3}[a]*c;x=m[b]*c;}
+   else if(r==='Above zone'){x=c;y=0;w=3*c}else if(r==='Below zone'){x=c;y=4*c;w=3*c}else if(r==='Off plate in'){x=(inL?0:4)*c;y=c;h=3*c}else{x=(inL?4:0)*c;y=c;h=3*c}
+   return `<rect x="${x+.6}" y="${y+.6}" width="${w-1.2}" height="${h-1.2}" rx="2" fill="${col(grid.rel[i])}"/><text x="${x+w/2}" y="${y+h/2+2.6}" text-anchor="middle" font-size="7" font-family="JetBrains Mono" fill="#0B1F3A">${f1(grid.rel[i])}</text>`;}).join('')
+   +`<rect x="20" y="20" width="60" height="60" fill="none" stroke="#0B1F3A" stroke-width="1.6"/></svg>`;}
+function go(G){
+  const q=new URLSearchParams(location.search), P=+(q.get('p')||G.pitchers[0].id), T=q.get('t')||G.opponents[0].team;
+  const pl=G.plans.find(x=>x.pitcher===P&&x.team===T), pi=G.pitchers.find(x=>x.id===P), op=G.opponents.find(x=>x.team===T);
+  const ars=Object.entries(pi.arsenal).map(([s,a])=>`<b>vs ${s}HH</b> `+a.map(x=>`${NAMES[x.pitch]} ${(100*x.share).toFixed(0)}% ${x.velo}`).join(' · ')).join(' &nbsp; ');
+  const L=['Attack','Avoid','Put away'];
+  const cards=pl.hitters.map(h=>{const lv=Object.fromEntries(h.leverage.map(x=>[x.state,x])), top=h.attack[0];
+    const ext=h.profile.slice().sort((a,b)=>Math.abs(b.pctl-50)-Math.abs(a.pctl-50)).slice(0,2).map(p=>`${p.label} ${p.value}${p.unit==='%'?'%':''} (${p.pctl}p)`).join(' · ');
+    const lvl=s=>lv[s]&&lv[s].pitch?`${NAMES[lv[s].pitch]} ${REG[lv[s].region]} ${v(lv[s].rel)}`:'–';
+    return `<div class="card"><h3>${h.order}. ${h.name}<span>${h.stand}HH${h.switch?' (S)':''} · ${h.pa} PA</span></h3>
+     <div class="row"><div>${zone(G,h.grid[top.pitch],h.stand)}<div class="zl">${NAMES[top.pitch]} map · catcher view</div></div><div>
+     ${h.attack.slice(0,2).map((a,i)=>`<p class="ln"><b>${i?'':'Attack'}</b>${NAMES[a.pitch]} ${REG[a.region]} ${v(a.rel)}</p>`).join('')}
+     ${h.avoid.slice(0,1).map(a=>`<p class="ln"><b>Avoid</b>${NAMES[a.pitch]} ${REG[a.region]} ${v(a.rel)}</p>`).join('')}
+     <p class="ln"><b>0-0</b>${lvl('First pitch')}</p><p class="ln"><b>Ahead</b>${lvl('Ahead')}</p><p class="ln"><b>Behind</b>${lvl('Behind')}</p>
+     <div class="prof">${ext}</div></div></div></div>`;}).join('');
+  document.getElementById('pg').innerHTML=`<div class="top"><div><div class="tag">Series game plan · matchup model</div><h1>${pi.name} vs ${op.name}</h1>
+    <div class="sub">${op.series}</div></div><div class="sub" style="text-align:right">${pi.throws}HP · ${pi.starts} starts in 2026<br>Built from 2026 Statcast pitch + bat-tracking data</div></div>
+    <div class="ars">${ars}</div>
+    <div class="take">${pl.takeaways.map((t,i)=>`<div><b>${L[i]}</b>${(x=>x[0].toUpperCase()+x.slice(1))(t.replace(/^(Attack|Avoid|Put-away): /,''))}</div>`).join('')}</div>
+    <div class="cards">${cards}</div>
+    <div class="foot">Values are runs per 100 pitches compared with ${pi.name}'s usual 2026 mix in that count against that hitter, from the pitcher's view (+ means better for the pitcher). Recommendations only use spots where he throws that pitch at least ${(100*G.method.feasible).toFixed(0)}% of the time; "Avoid" lists his own habits (${(100*G.method.habit).toFixed(0)}%+). Maps show the hitter's top attack pitch, catcher's view, with the inside edge toward the hitter. Lineup: ${G.method.lineup} Model: xgboost on ${(G.validation.pitch_level.n_train+G.validation.pitch_level.n_test).toLocaleString()} pitches with shrunk hitter profiles. On the held-out late-season window, hitter × pitch × location cells r = ${G.validation.cell_level.cor_model.toFixed(2)}, vs ${G.validation.cell_level.cor_raw_split.toFixed(2)} for raw first-half splits. Devin Jenkinson · devin182.github.io/royals-pitching-rd · Independent project, not affiliated with MLB or any club.</div>`;
+}
+go(window.GAMEPLAN);
+</script></body></html>

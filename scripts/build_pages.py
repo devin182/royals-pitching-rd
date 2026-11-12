@@ -3,6 +3,7 @@ Also copies the SQL / R source into site/code so the Methods page shows the real
 
 import json
 import pathlib
+import re
 import shutil
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -11,6 +12,8 @@ PAGES = [
     ("index.html", "Home"),
     ("explorer.html", "Pitcher Explorer"),
     ("research.html", "Research"),
+    ("tunnel/index.html", "Tunnel Viewer"),
+    ("gameplan.html", "Game Plan"),
     ("reports.html", "Reports"),
     ("methods.html", "Methods & Code"),
 ]
@@ -32,10 +35,40 @@ FOOT = """<footer><div class="wrap">
 <p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
 Code: <a href="{gh}">GitHub repo</a> <a href="{gh}/actions/workflows/ci.yml"><img src="{gh}/actions/workflows/ci.yml/badge.svg" alt="CI status" style="vertical-align:middle;height:20px"></a> · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
 </div></footer></body></html>"""
-for name, title in PAGES:
-    links = "".join(f'<li><a href="{n}">{t}</a></li>' for n, t in PAGES)
-    body = (SRC / name).read_text()
-    (OUT / name).write_text(HEAD.format(title=title, links=links) + body + FOOT.format(gh=GITHUB))
+# Pages built here from site_src/; tunnel.html and gameplan.html are self-contained pages copied in from
+# tunnel/ and gameplan/ -- for those we only rewrite the nav list (and add the CI badge) so every page matches.
+NAV = [(n, t) for n, t in PAGES if (SRC / n).exists() or (OUT / n).exists()]
+links = "".join(f'<li><a href="{n}">{t}</a></li>' for n, t in NAV)
+BADGE = f' <a href="{GITHUB}/actions/workflows/ci.yml"><img src="{GITHUB}/actions/workflows/ci.yml/badge.svg" alt="CI status" style="vertical-align:middle;height:20px"></a>'
+TUNNEL_NAV = (
+    '<div class="nav-inner"><a class="brand" href="../index.html">Devin Jenkinson <span>· Pitching R&amp;D</span></a><ul class="site-links">'
+    + "".join(f'<li><a href="../{n}"{" class=on" if n.startswith("tunnel/") else ""}>{t}</a></li>' for n, t in NAV)
+    + "</ul></div>"
+)
+pal_js = json.dumps({k: v for k, v in json.loads((ROOT / "config" / "pitch_colors.json").read_text()).items() if not k.startswith("_")})
+for name, title in NAV:
+    if name.startswith("tunnel/"):
+        html = (OUT / name).read_text()
+        html = re.sub(
+            r"<!--site-nav-->.*?<!--/site-nav-->", lambda m: "<!--site-nav-->" + TUNNEL_NAV + "<!--/site-nav-->", html, flags=re.S
+        )
+        (OUT / name).write_text(html)
+        continue
+    if (SRC / name).exists():
+        body = (SRC / name).read_text()
+        (OUT / name).write_text(HEAD.format(title=title, links=links) + body + FOOT.format(gh=GITHUB))
+        continue
+    html = (OUT / name).read_text()
+    head, sep, rest = html.partition('<button class="burger" aria-label="Menu">☰</button><ul>')
+    if sep:
+        cur = links.replace(f'href="{name}">', f'href="{name}" class="on">')
+        html = head + sep + cur + rest[rest.index("</ul>") :]
+    # shared pitch palette (config/pitch_colors.json) instead of the page's own
+    html = re.sub(r"const PAL=\{[^}]*\};", lambda m: f"const PAL={pal_js};", html)
+    gh_link = f'<a href="{GITHUB}">GitHub repo</a>'
+    if gh_link in html and "ci.yml/badge.svg" not in html:
+        html = html.replace(gh_link, gh_link + BADGE, 1)
+    (OUT / name).write_text(html)
 code = OUT / "code"
 code.mkdir(exist_ok=True)
 for f in list((ROOT / "sql").glob("*.sql")) + list((ROOT / "R").glob("*.R")) + list((ROOT / "report").glob("*.Rmd")) + [ROOT / "Makefile"]:

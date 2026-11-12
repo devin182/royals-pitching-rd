@@ -1,0 +1,286 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Series Game Plan · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
+<meta name="description" content="Matchup model and series game-plan generator: Royals starters vs the 2027 opening-series lineups, built from 2026 Statcast pitch and bat-tracking data with DuckDB SQL and R/xgboost.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<style>@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#0B1F3A; --bg-deep:#071428; --panel:#0f2747; --panel-2:#13305a; --line:#1f3d66;
+  --powder:#7AB2DD; --tint:#C5DCEF; --gold:#C9A227; --text:#E8EEF4; --muted:#9AA3B5; --bad:#ff8a7a; --good:#7fd8a6;
+  --display:'Archivo','Arial Narrow','Helvetica Neue',sans-serif; --body:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif;
+  --mono:'JetBrains Mono',Menlo,Consolas,monospace; --r:14px; --max:1180px;
+}
+*{box-sizing:border-box} html{background:var(--bg);color:var(--text);font-family:var(--body);scroll-behavior:smooth}
+body{margin:0;line-height:1.6;font-size:16px;font-variant-numeric:tabular-nums}
+.js-plotly-plot text{font-variant-numeric:tabular-nums}
+a{color:var(--powder);text-decoration:none} a:hover{color:var(--tint);text-decoration:underline}
+h1,h2,h3,h4{font-family:var(--display);font-weight:600;letter-spacing:.01em;line-height:1.15;margin:0 0 .5em}
+h1{font-size:clamp(2rem,4.6vw,3.4rem)} h2{font-size:clamp(1.5rem,3vw,2.1rem)} h3{font-size:1.2rem}
+p{margin:0 0 1em} .muted{color:var(--muted)} .accent{color:var(--gold)} .mono,.stat,code{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 22px}
+/* nav */
+.nav{position:sticky;top:0;z-index:50;background:rgba(7,20,40,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:18px;height:60px}
+.brand{font-family:var(--display);font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand img{width:28px;height:28px}
+.nav ul{list-style:none;display:flex;gap:4px;margin:0 0 0 auto;padding:0}
+.nav li a{color:var(--muted);padding:8px 12px;border-radius:9px;font-weight:500;font-size:.95rem}
+.nav li a:hover,.nav li a.on{color:var(--text);background:var(--panel);text-decoration:none}
+.burger{display:none;margin-left:auto;background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;font-size:1.1rem}
+@media (max-width:820px){.burger{display:block}.nav ul{display:none;position:absolute;top:60px;left:0;right:0;flex-direction:column;background:var(--bg-deep);padding:10px 16px;border-bottom:1px solid var(--line)}.nav ul.open{display:flex}}
+/* hero */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line);
+  background:linear-gradient(90deg,var(--bg-deep) 0%,rgba(7,20,40,.86) 38%,rgba(7,20,40,.15) 70%),none center right/cover no-repeat}
+@media (max-width:820px){.hero{background:linear-gradient(180deg,rgba(7,20,40,.65),var(--bg-deep) 75%),none center top/cover no-repeat}}
+.hero .wrap{padding-top:96px;padding-bottom:84px}
+.eyebrow{font-family:var(--mono);color:var(--gold);font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px}
+.hero p.lead{font-size:1.18rem;max-width:640px;color:var(--tint)}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.btn{display:inline-block;padding:11px 18px;border-radius:10px;font-weight:600;border:1px solid var(--powder);color:var(--text)}
+.btn.primary{background:var(--powder);color:var(--bg-deep)} .btn:hover{text-decoration:none;filter:brightness(1.08)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:44px;max-width:760px}
+.kpi{background:rgba(15,39,71,.75);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi b{display:block;font-family:var(--mono);font-size:1.45rem;color:var(--text)} .kpi span{color:var(--muted);font-size:.84rem}
+@media (max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
+/* sections */
+section{padding:64px 0;border-bottom:1px solid var(--line)} section.alt{background:var(--bg-deep)}
+.grid{display:grid;gap:18px} .g2{grid-template-columns:repeat(2,minmax(0,1fr))} .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:900px){.g2,.g3{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.card h3{margin-bottom:.35em} .card p:last-child{margin-bottom:0}
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;color:var(--powder);border:1px solid var(--line);padding:2px 8px;border-radius:20px;margin:0 6px 8px 0}
+.chart{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:8px;min-height:340px}
+.chart.tall{min-height:440px}
+.caption{font-size:.86rem;color:var(--muted);margin-top:8px}
+.callout{border-left:4px solid var(--gold);background:rgba(201,162,39,.07);padding:14px 18px;border-radius:0 10px 10px 0;margin:18px 0}
+.coach{border-left:4px solid var(--powder);background:var(--panel);padding:18px 20px;border-radius:0 var(--r) var(--r) 0}
+.coach .who{font-family:var(--display);font-size:1.25rem}
+.coach .say{font-size:1.06rem;color:var(--tint);font-style:italic;margin:.6em 0}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px} .toc a{font-size:.88rem;border:1px solid var(--line);padding:5px 11px;border-radius:20px;color:var(--muted)}
+.toc a:hover{color:var(--text);text-decoration:none;border-color:var(--powder)}
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.84rem} .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.tbl th{font-family:var(--body);text-align:right;color:var(--muted);font-weight:600;padding:9px 7px;background:var(--panel-2);white-space:nowrap}
+.tbl td{text-align:right;padding:7px 7px;border-top:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left;font-family:var(--body)}
+.sp{display:inline-block;min-width:42px;text-align:center;border-radius:6px;padding:1px 6px;font-weight:600;color:#071428}
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:18px 0}
+label.ctl{display:flex;flex-direction:column;font-size:.8rem;color:var(--muted);gap:5px}
+select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font:inherit;font-size:.95rem;min-width:220px}
+.pill{display:inline-flex;gap:6px;flex-wrap:wrap} .pill button{background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font:inherit;font-size:.86rem;cursor:pointer}
+.pill button.on{background:var(--powder);color:var(--bg-deep);border-color:var(--powder);font-weight:600}
+/* code */
+pre{background:var(--bg-deep);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto;font-family:var(--mono);font-size:.8rem;line-height:1.55;color:var(--tint);max-height:520px}
+.kw{color:var(--gold)} .cm{color:#6f86a6;font-style:italic} .st{color:var(--good)}
+.pipeline{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pipeline .step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.9rem}
+.pipeline .arrow{color:var(--gold);font-family:var(--mono)}
+iframe.report{width:100%;height:1080px;border:1px solid var(--line);border-radius:var(--r);background:#fff}
+footer{padding:36px 0 50px;color:var(--muted);font-size:.86rem}
+.todo{border:1px dashed var(--gold);color:var(--gold);padding:2px 8px;border-radius:6px;font-family:var(--mono);font-size:.82rem}
+
+/* ---- game plan page ---- */
+.gp-head{padding:44px 0 30px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.8rem;padding:1px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-deep);white-space:nowrap}
+.chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.rv{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600}
+.rv.pos{color:var(--good)} .rv.neg{color:var(--bad)}
+.take{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:8px}
+@media (max-width:900px){.take{grid-template-columns:1fr}}
+.take .coach{border-radius:0 var(--r) var(--r) 0;font-size:.98rem}
+.take .coach b{font-family:var(--display);display:block;font-size:1.05rem;color:var(--gold);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase}
+.tbl tr.hit{cursor:pointer} .tbl tr.hit:hover td{background:rgba(122,178,221,.07)} .tbl tr.sel td{background:rgba(201,162,39,.12)}
+.tbl td.l{text-align:left;font-family:var(--body)}
+#lineup{font-size:.8rem} #lineup .chip{font-size:.72rem;padding:0 6px} #lineup td{padding:7px 5px}
+.detail{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;margin-top:18px}
+@media (max-width:900px){.detail{grid-template-columns:1fr}}
+.bar{display:grid;grid-template-columns:110px 1fr 96px;gap:10px;align-items:center;font-size:.86rem;margin:5px 0}
+.bar .track{height:9px;background:var(--bg-deep);border-radius:6px;position:relative;border:1px solid var(--line)}
+.bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
+.bar .v{font-family:var(--mono);text-align:right;color:var(--tint);white-space:nowrap;font-size:.8rem}
+.zonebox svg{width:100%;max-width:430px;display:block;margin:0 auto}
+.lev{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+@media (max-width:640px){.lev{grid-template-columns:repeat(2,1fr)}}
+.lev div{background:var(--bg-deep);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.84rem}
+.lev div>span:first-child{display:block;color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em}
+.mini{font-size:.8rem;color:var(--muted)}
+.legend{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);justify-content:center;margin-top:6px}
+.legend .ramp{width:180px;height:10px;border-radius:5px;background:linear-gradient(90deg,#ff8a7a,#3a2a3a 45%,#13305a 50%,#244a5e 55%,#7fd8a6)}
+.vgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:820px){.vgrid{grid-template-columns:repeat(2,1fr)}}
+</style>
+<script src="gameplan_data.js"></script>
+</head><body>
+<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Pitcher Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="tunnel/index.html">Tunnel Viewer</a></li><li><a href="gameplan.html" class="on">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods & Code</a></li></ul></div></nav>
+
+<section class="gp-head"><div class="wrap">
+  <div class="eyebrow">Matchup model · Series prep</div>
+  <h1 style="font-size:clamp(1.8rem,3.6vw,2.7rem)">Series Game Plan: <span id="h-opp">Opening Day 2027</span></h1>
+  <p class="muted" style="max-width:820px">Pick a Royals starter and one of the first four 2027 opponents. A pitch-level model scores every pitch in the starter's real 2026 arsenal, in 13 locations and all 12 counts, against each hitter's profile: bat speed, swing length, attack angle, chase, whiff by pitch type, and contact quality. Small samples are shrunk toward league average. The plan shows what to throw, where, and in which count. Values are <b>runs per 100 pitches compared with the pitcher's usual mix</b> in that count against that hitter, from the pitcher's side (+ means good for the pitcher).</p>
+  <div class="kpis" id="kpis"></div>
+  <div class="controls" style="margin-top:28px">
+    <label class="ctl">Royals starter<select id="pick"></select></label>
+    <div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Opponent (2027 schedule, first four series)</div><div class="pill" id="opp"></div></div>
+    <a id="printlink" class="btn" style="margin-left:auto" target="_blank">Printable one-page plan ↗</a>
+  </div>
+  <div class="mini" id="series"></div>
+</div></section>
+
+<section class="alt" style="padding-top:40px"><div class="wrap">
+  <h2>Three things for the staff</h2>
+  <div class="take" id="take"></div>
+  <p class="caption" id="arsenal" style="margin-top:14px"></p>
+</div></section>
+
+<section style="padding-top:40px"><div class="wrap">
+  <h2>Hitter-by-hitter plan</h2>
+  <p class="muted" style="max-width:820px">Lineup = <span id="lineupnote"></span> Click a hitter for his zone map and profile. Recommendations only use locations where this pitcher actually throws that pitch at least <span id="feas"></span> of the time, so every plan is one he can execute. "Avoid" lists his own frequent habits (spots that get <span id="habit"></span>+ of that pitch) that grade worst against this hitter.</p>
+  <div class="tblwrap"><table class="tbl" id="lineup"></table></div>
+  <div class="detail" id="detail"></div>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <h2>What the model learned about hitter types</h2>
+  <p class="muted" style="max-width:820px">This is a partial-dependence check. Take the same set of real 2026 pitches and hold every hitter trait at league average except one. Then set that trait to a typical bottom-quartile value and a typical top-quartile value for regular hitters, and re-score. The empirical columns are the actual run values on those pitches against bottom- and top-quartile hitters. They're noisier and confounded, but they show the model isn't inventing effects. Runs per 100 pitches, pitcher's view.</p>
+  <div class="tblwrap"><table class="tbl" id="learned"></table></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Validation: honest numbers</h2>
+  <p class="muted" style="max-width:820px">Time split: trained on games before <b id="v-split"></b>, tested on everything after. Hitter profiles for the test came only from the training window, the same information a staff would have had at the time. The target is the project's de-noised run value: balls in play are valued by exit velocity, launch angle, and count rather than by whether they fell in.</p>
+  <div class="vgrid" id="vkpis"></div>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card"><h3>Calibration on the test window</h3><div id="calib"></div><p class="caption">Test pitches split into deciles by predicted value (count effect removed). If the model is calibrated, the dots sit on the diagonal.</p></div>
+    <div class="card"><h3>What this does and doesn't show</h3><div id="honest"></div></div>
+  </div>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <h2>Method</h2>
+  <div class="grid g2">
+    <div class="card"><h3>Model</h3><p class="muted" id="m-model"></p></div>
+    <div class="card"><h3>Plan generator</h3><p class="muted" id="m-plan"></p></div>
+  </div>
+  <p class="caption" style="margin-top:16px" id="src"></p>
+</div></section>
+
+<footer><div class="wrap">
+<p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level and bat-tracking data, 2026 regular season); player names from the MLB Stats API. 2027 schedule: <a href="https://apnews.com/article/2027-kansas-city-royals-schedule-4804d732222e0d55c13fd367e012f9e1">AP</a>, <a href="https://www.kansascity.com/sports/mlb/kansas-city-royals/article316539530.html">Kansas City Star</a>. Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> <a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml"><img src="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml/badge.svg" alt="CI status" style="vertical-align:middle;height:20px"></a> · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
+</div></footer>
+<script>
+const PAL={"FF": "#C9A227", "SI": "#C44A12", "FC": "#C47A3A", "SL": "#2E94D0", "ST": "#16808C", "CU": "#7A75F0", "KC": "#D456B0", "SV": "#A8B4D8", "CH": "#1B8F62", "FS": "#8A5CC8", "FO": "#9AA3B5", "SC": "#9AA3B5", "KN": "#9AA3B5", "CS": "#9AA3B5"};
+const NAMES={FF:'4-Seam',SI:'Sinker',FC:'Cutter',SL:'Slider',ST:'Sweeper',SV:'Slurve',CU:'Curveball',KC:'Knuckle Curve',CH:'Changeup',FS:'Splitter',FO:'Forkball',KN:'Knuckleball'};
+const REG={'Up-In':'Up & in','Up-Middle':'Up, middle','Up-Away':'Up & away','Mid-In':'Middle-in','Mid-Middle':'Heart','Mid-Away':'Middle-away','Low-In':'Low & in','Low-Middle':'Low, middle','Low-Away':'Low & away','Above zone':'Above zone','Off plate in':'Off plate in','Off plate away':'Off plate away','Below zone':'Below zone'};
+const STATE={'First pitch':'0-0','Ahead':'Ahead','Even':'Even','Behind':'Behind'};
+const f1=x=>x==null?'–':(x>0?'+':'')+Number(x).toFixed(1);
+const rv=x=>`<span class="rv ${x>0.05?'pos':x<-0.05?'neg':''}">${f1(x)}</span>`;
+const chip=p=>`<span class="chip"><i style="background:${PAL[p]||'#ccc'}"></i>${NAMES[p]||p}</span>`;
+const pct=x=>(100*x).toFixed(0)+'%';
+let G=null, P=null, T=null, H=0, PT=null;
+function col(v,m=4){const t=Math.max(-1,Math.min(1,v/m));
+  const a=[19,48,90], g=[127,216,166], r=[255,138,122]; const c=t>=0?g:r, k=Math.abs(t)**0.8;
+  return `rgb(${a.map((x,i)=>Math.round(x+(c[i]-x)*k)).join(',')})`;}
+// 13-region zone, catcher's view. RHH: inside is on the left; LHH: inside on the right.
+function zoneSVG(grid, stand, opt={}){
+  const W=opt.w||420, cell=W/5, Hh=cell*5, inLeft=stand==='R';
+  const R=G.regions; const cells=[];
+  const colOf=s=>{const m={In:inLeft?1:3,Middle:2,Away:inLeft?3:1}; return m[s];};
+  R.forEach((r,i)=>{let x,y,w=cell,h=cell;
+    if(r.includes('-')&&!r.startsWith('Off')){const [v,s]=r.split('-'); y={Up:1,Mid:2,Low:3}[v]*cell; x=colOf(s)*cell;}
+    else if(r==='Above zone'){x=cell;y=0;w=3*cell;} else if(r==='Below zone'){x=cell;y=4*cell;w=3*cell;}
+    else if(r==='Off plate in'){x=(inLeft?0:4)*cell;y=cell;h=3*cell;} else {x=(inLeft?4:0)*cell;y=cell;h=3*cell;}
+    cells.push({r,x,y,w,h,v:grid.rel[i],f:grid.freq[i]});});
+  const fs=opt.fs||13;
+  const body=cells.map(c=>`<g><rect x="${c.x+1}" y="${c.y+1}" width="${c.w-2}" height="${c.h-2}" rx="5" fill="${c.v==null?'#0f2747':col(c.v)}" stroke="${opt.stroke||'#0B1F3A'}"/>
+    <text x="${c.x+c.w/2}" y="${c.y+c.h/2-(opt.nofreq?-fs*0.35:2)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="${fs}" font-weight="600" fill="${opt.ink||'#E8EEF4'}">${c.v==null?'':f1(c.v)}</text>
+    ${opt.nofreq?'':`<text x="${c.x+c.w/2}" y="${c.y+c.h/2+fs}" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="${fs*0.78}" fill="${opt.ink2||'#C5DCEF'}" opacity=".8">${(100*c.f).toFixed(0)}% thrown</text>`}<title>${REG[c.r]}: ${f1(c.v)} runs/100 vs usual mix · ${(100*c.f).toFixed(0)}% of this pitch goes here</title></g>`).join('');
+  const zone=`<rect x="${cell}" y="${cell}" width="${3*cell}" height="${3*cell}" fill="none" stroke="${opt.zstroke||'#E8EEF4'}" stroke-width="2.5" rx="3"/>`;
+  const lab=opt.nolab?'':`<text x="${inLeft?6:W-6}" y="${Hh-8}" text-anchor="${inLeft?'start':'end'}" font-size="11" fill="#9AA3B5" font-family="IBM Plex Sans">◀ inside (${stand}HH)</text>`.replace('◀',inLeft?'◀':'▶');
+  return `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="zone map">${body}${zone}${lab}</svg>`;
+}
+function plan(){return G.plans.find(x=>x.pitcher===P&&x.team===T);}
+function render(){
+  const pl=plan(), pi=G.pitchers.find(x=>x.id===P), op=G.opponents.find(x=>x.team===T);
+  document.getElementById('h-opp').textContent=`${pi.name} vs ${op.name}`;
+  document.getElementById('series').innerHTML=`${op.series} · ${op.opener?'<span class="accent">Opening series</span>':''}`;
+  document.getElementById('printlink').href=`gameplan_print.html?p=${P}&t=${T}`;
+  const lab=['Attack','Avoid','Put away'];
+  document.getElementById('take').innerHTML=pl.takeaways.map((t,i)=>`<div class="coach"><b>${lab[i]}</b>${(x=>x[0].toUpperCase()+x.slice(1))(t.replace(/^(Attack|Avoid|Put-away): /,''))}</div>`).join('');
+  const ars=Object.entries(pi.arsenal).map(([s,a])=>`vs ${s}HH: `+a.map(x=>`${NAMES[x.pitch]} ${pct(x.share)} (${x.velo} mph)`).join(', ')).join(' · ');
+  document.getElementById('arsenal').textContent=`${pi.name} (${pi.throws}HP, ${pi.starts} starts in 2026). Arsenal scored: ${ars}.`;
+  const rows=pl.hitters.map((h,i)=>{const a=h.attack[0], v=h.avoid[0], L=Object.fromEntries(h.leverage.map(x=>[x.state,x]));
+    const ext=h.profile.slice().sort((x,y)=>Math.abs(y.pctl-50)-Math.abs(x.pctl-50))[0];
+    return `<tr class="hit ${i===H?'sel':''}" data-i="${i}"><td>${h.order}. <b>${h.name}</b> <span class="muted">${h.stand}${h.switch?' (S)':''}</span></td><td>${h.pa}</td>
+      <td class="l">${chip(a.pitch)} ${REG[a.region]} ${rv(a.rel)}</td><td class="l">${v?chip(v.pitch)+' '+REG[v.region]+' '+rv(v.rel):'–'}</td>
+      <td class="l">${L['First pitch'].pitch?chip(L['First pitch'].pitch)+' '+REG[L['First pitch'].region]:'–'}</td>
+      <td class="l">${L['Ahead'].pitch?chip(L['Ahead'].pitch)+' '+REG[L['Ahead'].region]:'–'}</td>
+      <td class="l">${L['Behind'].pitch?chip(L['Behind'].pitch)+' '+REG[L['Behind'].region]:'–'}</td>
+      <td class="l mini">${ext.label} ${ext.value}${ext.unit==='%'?'%':ext.unit?' '+ext.unit:''} (${ext.pctl}th pct)</td></tr>`;}).join('');
+  document.getElementById('lineup').innerHTML=`<thead><tr><th>Hitter</th><th>PA</th><th style="text-align:left">Attack #1</th><th style="text-align:left">Avoid #1</th><th style="text-align:left">First pitch</th><th style="text-align:left">Put away (ahead)</th><th style="text-align:left">Behind in count</th><th style="text-align:left">Stand-out trait</th></tr></thead><tbody>${rows}</tbody>`;
+  document.querySelectorAll('#lineup tr.hit').forEach(tr=>tr.onclick=()=>{H=+tr.dataset.i;PT=null;render();document.getElementById('detail').scrollIntoView({behavior:'smooth',block:'nearest'});});
+  detail(pl.hitters[H]);
+}
+function detail(h){
+  const types=Object.keys(h.grid); if(!PT||!h.grid[PT]) PT=h.attack[0].pitch;
+  const bars=h.profile.map(p=>`<div class="bar"><span>${p.label}</span><div class="track"><div class="fill" style="width:${p.pctl}%;background:${p.pctl>=75?'var(--gold)':p.pctl<=25?'var(--powder)':'#4d6d96'}"></div></div><span class="v">${p.value}${p.unit==='%'?'%':''} · ${p.pctl}</span></div>`).join('');
+  const lev=h.leverage.map(l=>`<div><span>${l.state==='First pitch'?'First pitch (0-0)':l.state==='Ahead'?'Ahead (put away)':l.state==='Even'?'Even (1-1, 2-2)':'Behind'}</span>${l.pitch?chip(l.pitch)+'<br>'+REG[l.region]+' '+rv(l.rel):'–'}</div>`).join('');
+  document.getElementById('detail').innerHTML=`
+   <div class="card zonebox"><h3>${h.name}: where each pitch plays</h3>
+     <div class="pill" id="ptp" style="margin:6px 0 12px">${types.map(t=>`<button data-t="${t}" class="${t===PT?'on':''}">${NAMES[t]}</button>`).join('')}</div>
+     ${zoneSVG(h.grid[PT],h.stand)}
+     <div class="legend"><span>worse than his usual mix</span><span class="ramp"></span><span>better</span></div>
+     <p class="caption">Catcher's view, with height scaled to the hitter's zone. Each cell shows runs per 100 pitches compared with his usual mix, averaged over counts, and how often he throws this pitch there against ${h.stand}HH.</p></div>
+   <div class="card"><h3>Hitter profile <span class="mini">(value · percentile among regulars, shrunk)</span></h3>${bars}
+     <h3 style="margin-top:18px">Count leverage</h3><div class="lev">${lev}</div>
+     <h3 style="margin-top:18px">Attack / avoid</h3>
+     <p style="margin:0">${h.attack.map(a=>`${chip(a.pitch)} ${REG[a.region]} ${rv(a.rel)} <span class="mini">(${pct(a.freq)} of his ${NAMES[a.pitch]}s)</span>`).join('<br>')}</p>
+     <p style="margin-top:8px">${h.avoid.map(a=>`<span class="muted">Avoid</span> ${chip(a.pitch)} ${REG[a.region]} ${rv(a.rel)} <span class="mini">(${pct(a.freq)} of his ${NAMES[a.pitch]}s)</span>`).join('<br>')}</p></div>`;
+  document.querySelectorAll('#ptp button').forEach(b=>b.onclick=()=>{PT=b.dataset.t;detail(h);});
+}
+function statics(){
+  const v=G.validation, pl=v.pitch_level, c=v.cell_level;
+  document.getElementById('kpis').innerHTML=[
+    [Number(pl.n_train+pl.n_test).toLocaleString(),'2026 pitches modeled'],[c.cor_model.toFixed(2),'held-out cell r (model)'],[c.cor_raw_split.toFixed(2),'held-out cell r (raw splits)'],
+    [G.pitchers.length+' × '+G.opponents.length,'starters × opponents']].map(k=>`<div class="kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
+  document.getElementById('v-split').textContent=pl.split_date;
+  const vk=[[ (100*pl.r2_matchup_vs_count).toFixed(1)+'%','Pitch-level R² over a count-only baseline (test)'],
+    [c.cor_model.toFixed(2)+' vs '+c.cor_raw_split.toFixed(2),`Hitter × pitch group × location cells (${c.n_cells}, 40+ test pitches): model vs that hitter's raw first-half split`],
+    [c.rmse_model_per100.toFixed(2)+' vs '+c.rmse_raw_split_per100.toFixed(2),'Cell error, runs/100 pitches: model vs raw split'],
+    [c.cor_hitter_adjustment_model.toFixed(2)+' vs '+c.cor_hitter_adjustment_raw_split.toFixed(2),'Signal in the hitter adjustment: model vs raw split (r with what the no-hitter model missed)']];
+  document.getElementById('vkpis').innerHTML=vk.map(k=>`<div class="kpi"><b style="font-size:1.25rem">${k[0]}</b><span>${k[1]}</span></div>`).join('');
+  // calibration svg
+  const cal=v.calibration, W=440, Hh=300, pad=44; const lo=Math.min(...cal.map(d=>Math.min(d.pred100,d.actual100)))-0.5, hi=Math.max(...cal.map(d=>Math.max(d.pred100,d.actual100)))+0.5;
+  const sx=x=>pad+(x-lo)/(hi-lo)*(W-pad-12), sy=y=>Hh-pad-(y-lo)/(hi-lo)*(Hh-pad-12);
+  let ticks=''; for(let t=Math.ceil(lo/2)*2;t<=hi;t+=2){ticks+=`<line x1="${sx(t)}" x2="${sx(t)}" y1="${sy(lo)}" y2="${sy(hi)}" stroke="#1f3d66"/><line x1="${sx(lo)}" x2="${sx(hi)}" y1="${sy(t)}" y2="${sy(t)}" stroke="#1f3d66"/><text x="${sx(t)}" y="${Hh-pad+16}" fill="#9AA3B5" font-size="11" text-anchor="middle">${t}</text><text x="${pad-8}" y="${sy(t)+4}" fill="#9AA3B5" font-size="11" text-anchor="end">${t}</text>`;}
+  document.getElementById('calib').innerHTML=`<svg viewBox="0 0 ${W} ${Hh}" style="width:100%">${ticks}<line x1="${sx(lo)}" y1="${sy(lo)}" x2="${sx(hi)}" y2="${sy(hi)}" stroke="#C9A227" stroke-dasharray="5 4"/>
+   ${cal.map(d=>`<circle cx="${sx(d.pred100)}" cy="${sy(d.actual100)}" r="6" fill="#7AB2DD"><title>decile ${d.dec}: predicted ${f1(d.pred100)}, actual ${f1(d.actual100)} (n=${d.n})</title></circle>`).join('')}
+   <text x="${(W+pad)/2}" y="${Hh-6}" fill="#C5DCEF" font-size="12" text-anchor="middle">predicted runs/100 (count-adjusted)</text><text transform="translate(12 ${(Hh-pad)/2}) rotate(-90)" fill="#C5DCEF" font-size="12" text-anchor="middle">actual runs/100</text></svg>`;
+  const gain=(100*pl.r2_hitter_gain_over_pitch_model).toFixed(2);
+  document.getElementById('honest').innerHTML=`<ul style="margin:0;padding-left:18px;color:var(--tint);font-size:.93rem">
+   <li>Single pitches are mostly noise. The model explains about ${(100*pl.r2_matchup_vs_count).toFixed(1)}% of pitch-to-pitch variance beyond the count, which is typical for run-value models. Its job is ranking options, not calling one pitch.</li>
+   <li>Where it earns its keep is with small samples. On cells it never saw, the model tracks results better than a hitter's own first-half split (r ${c.cor_model.toFixed(2)} vs ${c.cor_raw_split.toFixed(2)}; error ${c.rmse_model_per100.toFixed(2)} vs ${c.rmse_raw_split_per100.toFixed(2)} runs/100). Raw "he can't hit X down" splits overreact.</li>
+   <li>The hitter profile adds only a small amount over a pitch-and-location-only model: +${gain} points of pitch-level R², and cell r ${c.cor_model.toFixed(2)} vs ${c.cor_model_no_hitter.toFixed(2)}. The model's hitter adjustment correlates r = ${c.cor_hitter_adjustment_model.toFixed(2)} with what the no-hitter model missed, compared with r = ${c.cor_hitter_adjustment_raw_split.toFixed(2)} for raw splits. Most of a plan's value comes from the pitcher's own pitches and locations. Hitter tendencies tilt the plan; they don't drive it.</li>
+   <li>The hitter-specific residual layer (shrinkage k = ${pl.res_k} pitches, fixed in advance) was roughly neutral on the test window: R² ${(100*pl.r2_matchup_res_vs_count).toFixed(2)}% vs ${(100*pl.r2_matchup_vs_count).toFixed(2)}% without it. Heavier shrinkage did slightly better (sensitivity: ${pl.res_k_sensitivity.map(s=>'k='+s.k+': '+(100*s.r2_vs_count).toFixed(2)+'%').join(', ')}), which is another sign that hitter-specific splits are mostly noise at these sample sizes.</li>
+   <li>Not modeled: sequencing and tunneling, the catcher's framing, the park, the umpire, and roster changes before 2027.</li></ul>`;
+  document.getElementById('learned').innerHTML=`<thead><tr><th>Pitch set</th><th>Hitter trait</th><th>Bottom-Q value</th><th>Top-Q value</th><th>Model: bottom Q</th><th>Model: top Q</th><th>Δ model</th><th>Actual: bottom Q</th><th>Actual: top Q</th></tr></thead><tbody>${
+    G.learned.map(l=>`<tr><td>${l.set_label}</td><td class="l">${l.feature_label}</td><td>${l.feature==='h_chase'?pct(l.low_q):l.low_q}</td><td>${l.feature==='h_chase'?pct(l.high_q):l.high_q}</td><td>${rv(l.model_low)}</td><td>${rv(l.model_high)}</td><td>${rv(l.model_high-l.model_low)}</td><td>${rv(l.emp_low)}</td><td>${rv(l.emp_high)}</td></tr>`).join('')}</tbody>`;
+  document.getElementById('lineupnote').textContent=G.method.lineup;
+  document.getElementById('feas').textContent=pct(G.method.feasible); document.getElementById('habit').textContent=pct(G.method.habit);
+  document.getElementById('m-model').innerHTML=`An xgboost regression on ${Number(pl.n_train+pl.n_test).toLocaleString()} 2026 pitches. The target is the pitcher's de-noised run value per pitch. Features: pitch traits (velocity, induced vertical and horizontal break, spin, extension, arm angle, release height, approach angle, and velocity/movement differences from his primary fastball), hitter-relative location, count, platoon, and a hitter profile. The profile uses bat speed, swing length, and attack angle from Statcast bat tracking, plus chase rate, zone-swing rate, zone whiff, whiff by pitch group, and xwOBA on contact. Each hitter stat is shrunk toward league average with an empirical-Bayes prior, for example 40 tracked swings for bat speed and 150 out-of-zone pitches for chase rate. A hitter-specific residual for pitch group × location band is added on top, shrunk with k = ${pl.res_k} pitches. Features are prepped in DuckDB SQL; the modeling is in R.`;
+  document.getElementById('m-plan').innerHTML=`For each starter, every pitch type he threw at least 4% of the time against that batter side is scored at his average 2026 shape. Approach angle is re-solved for the target height. Each pitch is placed in each of 13 locations and all 12 counts against each hitter. Counts are grouped into first pitch, ahead, even, and behind, using league count frequencies as weights. Every value is shown relative to the pitcher's real 2026 usage in that count against that batter side, so +2.0 means that pitch-location choice is worth 2 runs per 100 pitches more than what he usually throws there. Switch hitters are scored from the side they'd bat against him. The three takeaways are generated from lineup-wide averages.`;
+  document.getElementById('src').innerHTML=`Opponent choice: the 2027 Royals schedule is published. Opening Day is Thursday, March 25, 2027 against the Twins at Kauffman Stadium, followed by the White Sox, then at St. Louis and at the Angels (<a href="https://apnews.com/article/2027-kansas-city-royals-schedule-4804d732222e0d55c13fd367e012f9e1">AP 2027 Royals schedule</a>; <a href="https://www.ksal.com/royals-announce-2027-regular-season-schedule/">Royals release via KSAL</a>). The schedule is subject to the 2027 CBA. Lineups and all numbers are computed from 2026 Statcast data; generated ${G.generated}.`;
+}
+function init(){
+  const s=document.getElementById('pick'); s.innerHTML=G.pitchers.map(p=>`<option value="${p.id}">${p.name} (${p.throws}HP · ${p.starts} GS)</option>`).join('');
+  const q=new URLSearchParams(location.search); P=+(q.get('p')||G.pitchers[0].id); T=q.get('t')||G.opponents[0].team; s.value=P;
+  s.onchange=()=>{P=+s.value;H=0;PT=null;render();};
+  const o=document.getElementById('opp'); o.innerHTML=G.opponents.map(x=>`<button data-t="${x.team}" class="${x.team===T?'on':''}">${x.team}${x.opener?' · Opener':''}</button>`).join('');
+  o.querySelectorAll('button').forEach(b=>b.onclick=()=>{T=b.dataset.t;H=0;PT=null;o.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));render();});
+  const b=document.querySelector('.burger'), u=document.querySelector('.nav ul'); if(b) b.onclick=()=>u.classList.toggle('open');
+  statics(); render();
+}
+document.addEventListener('DOMContentLoaded',()=>{ if(window.GAMEPLAN){G=window.GAMEPLAN;init();} else fetch('gameplan_data.json').then(r=>r.json()).then(d=>{G=d;init();}); });
+</script></body></html>
