@@ -1,0 +1,45 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sequencing · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
+<meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="assets/style.css?v=15ed2a0758">
+<script>window.DATA_V="8e8686eb20";</script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=355ccf4e85" defer></script>
+</head><body>
+<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="" width="28" height="28">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
+<section style="padding-top:44px"><div class="wrap">
+  <div class="eyebrow">Research · sequencing</div>
+  <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">Does the previous pitch matter?</h1>
+  <p class="muted" style="max-width:840px">Pick the pitch that was just thrown (type, location, result) and the count. The bars show the model's estimate of how each next pitch type does, league-wide. The thin marker is the same estimate from a no-sequence baseline that knows only the count, the pitch type and the batter and pitcher hands. Below each estimate is what actually happened after that previous pitch, league and Royals (all counts pooled), with n and 95% intervals.</p>
+  <div class="callout" id="qcall"></div>
+  <div class="card"><h3>Held-out validation: sequence model vs no-sequence baseline</h3>
+    <div class="tblwrap"><table class="tbl" id="qval"></table></div>
+    <p class="caption" id="qvalcap"></p></div>
+  <div class="controls" style="margin-top:22px">
+    <div><div class="muted qk">Previous pitch</div><div class="pill" id="qpt"></div></div>
+    <div><div class="muted qk">Its location</div><div class="pill" id="qloc"></div></div>
+    <div><div class="muted qk">Its result</div><div class="pill" id="qres"></div></div>
+    <label class="ctl">Count now<select id="qcount"></select></label>
+    <div><div class="muted qk">Outcome</div><div class="pill" id="qmet"><button data-m="0" class="on">CSW</button><button data-m="1">Whiff / swing</button><button data-m="2">xRV / 100</button></div></div>
+  </div>
+  <div class="card"><div id="qbars"></div>
+    <p class="caption">Bar = sequence model, league-wide, weighted by the league mix of batter and pitcher hands. Thin white marker = no-sequence baseline for the same count. CSW = called + swinging strikes per pitch. Whiff = whiffs per swing. xRV/100 = expected run value per 100 pitches, pitcher's view (+ is good for the pitcher). "League" and "Royals" give the actual rate after this previous pitch, all counts pooled, with 95% Wilson intervals. Royals rates appear only with 50+ pitches (CSW) or 50+ swings (whiff). Location: zone up and zone down split the rulebook zone at its middle. "Out side" means off the plate horizontally at a height inside the zone.</p></div>
+  <h2 style="margin-top:34px">Royals leads</h2>
+  <div id="qroy" class="grid g2"></div>
+  <p class="caption" id="qroycap"></p>
+  <div class="card" style="margin-top:18px"><h3>Method</h3><ul class="muted" style="margin:0;padding-left:18px">
+    <li>Unit: every pitch after the first in a plate appearance (same pitcher), 2026 regular season, league-wide. Pitch types are grouped: CU covers curveballs, knuckle curves, slurves and slow curves, and FS includes forkballs.</li>
+    <li>Both models use xgboost with identical settings. The sequence model adds the previous pitch's type, location (5 zones) and result, plus a same-type flag. Location of the <i>next</i> pitch is left out on purpose, because the question is about choosing a pitch type, not about how well it is located.</li>
+    <li>Validation: train on games through <span id="qsplit"></span>, test on later games. Lift is the % reduction in held-out log loss (MSE for xRV), with a 95% interval from resampling games.</li>
+    <li>Royals leads compare actual results with the sequence model's expectation, after removing each pitcher's average over- or under-performance on that pitch type, so that a pitcher's overall quality doesn't show up as a "sequencing effect". Code: <a href="code/06_sequencing.R.txt">R/06_sequencing.R</a>.</li></ul></div>
+</div></section>
+<script src="assets/sequencing.js?v=c22b7df194" defer></script>
+<footer><div class="wrap">
+<p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
+Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> (<a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
+</div></footer></body></html>

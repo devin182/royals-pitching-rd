@@ -113,10 +113,12 @@ function render(){
   document.getElementById('cardlink').href=`reports/cards/${p.id}.html`;
 }
 document.addEventListener('DOMContentLoaded',()=>{
-  getJSON('data/explorer.json').then(d=>{ DATA=d; const sel=document.getElementById('pick');
+  getJSON('data/explorer_index.json').then(d=>{ DATA=d; const sel=document.getElementById('pick');
     sel.innerHTML=d.map((p,i)=>`<option value="${i}">${nice(p.name)} (${p.throws}HP, ${p.n.toLocaleString()} pitches)</option>`).join('');
     const want=new URLSearchParams(location.search).get('p'); const idx=Math.max(0,d.findIndex(p=>String(p.id)===want));
-    sel.value=idx; CUR=d[idx]; render(); sel.onchange=()=>{CUR=d[sel.value];render();};
+    // pitch sample + location grid live in data/explorer/<id>.json, loaded when the pitcher is picked
+    const pick=i=>getJSON(`data/explorer/${d[i].id}.json`).then(x=>{ CUR=Object.assign(d[i],x); render(); });
+    sel.value=idx; pick(idx); sel.onchange=()=>pick(sel.value);
     document.querySelectorAll('#metric button').forEach(b=>b.onclick=()=>{MET=b.dataset.m;document.querySelectorAll('#metric button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
     document.querySelectorAll('#side button').forEach(b=>b.onclick=()=>{SIDE=b.dataset.s;document.querySelectorAll('#side button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
   });

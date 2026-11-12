@@ -19,6 +19,8 @@ interactive HTML/CSS/JS reports, and a reproducible daily pitching report printe
   6. Fatigue curves
   7. Four coach-facing recommendations
 - **Tunnel Viewer** (`site/tunnel/`): a Three.js broadcast-style view of average pitch paths with camera presets, playback speeds, a live gap HUD and a 2D fallback when WebGL is missing. Data built by `tunnel/build_tunnel.py`.
+- **Pitch Design Lab** (`site/lab.html`): sliders for velo, spin, movement, release and extension on a Royals pitch, re-graded live by the Stuff+ xgboost model running in the browser (trees exported by `R/05_design_lab.R`; `tests/js/lab.test.js` checks that JS matches R to within 1e-6 and runs in CI). Model estimates only. Slider positions outside the training data are flagged, and the nearest MLB comparables are shown.
+- **Sequencing** (`site/sequencing.html`): previous pitch (type, location, result) plus count → next-pitch CSW, whiff and xRV, league-wide, compared on held-out games with a no-sequence baseline (the lift is small and is reported as such). Includes two Royals leads with n, intervals and a multiple-testing caveat.
 - **Game Plan** (`gameplan/`): an xgboost matchup model and series game-plan generator for Royals starters vs the first 2027 opponents. Validation is reported honestly: hitter traits add little over pitcher and location features.
 - **Reports**: a daily pitching report (velocity and shape vs each pitcher's baseline, alert flags, workload, opponent attack / avoid / put-away sheet) and a one-page card for every pitcher, rendered from R Markdown with SQL chunks.
 - **Methods & Code**: definitions plus the actual SQL and R source.
@@ -36,6 +38,8 @@ interactive HTML/CSS/JS reports, and a reproducible daily pitching report printe
 | Transform | `sql/01_load.sql` … `sql/07_players.sql`, run by `R/01_build_db.R` | DuckDB SQL |
 | Stuff+ | `R/02_stuff_model.R` | R · xgboost |
 | Analyses → JSON | `R/03_analysis.R` | R · DuckDB · data.table |
+| Design Lab export | `R/05_design_lab.R` → `site/data/lab/`, checked by `tests/js/lab.test.js` | R · xgboost tree dump · JS |
+| Sequencing | `R/06_sequencing.R` → `site/data/sequencing.json` | R · xgboost |
 | Reports | `report/daily_report.Rmd`, `report/pitcher_card.Rmd`, `R/04_reports.R` | R Markdown + SQL chunks, ggplot2 |
 | PDFs | `scripts/print_pdf.sh` | headless Chrome |
 | Site | `site_src/*.html` + `scripts/build_pages.py` → `site/` | vanilla HTML/CSS/JS, Plotly |

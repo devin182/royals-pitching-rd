@@ -1,0 +1,57 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Design Lab · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
+<meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="assets/style.css?v=15ed2a0758">
+<script>window.DATA_V="8e8686eb20";</script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=355ccf4e85" defer></script>
+</head><body>
+<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="" width="28" height="28">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
+<section style="padding-top:44px"><div class="wrap">
+  <div class="eyebrow">Interactive · model estimate</div>
+  <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">Pitch Design Lab</h1>
+  <p class="muted" style="max-width:820px">Pick a Royals pitch, then move the sliders to see how the Stuff+ model grades a changed shape. The model runs in your browser: it is this project's xgboost Stuff+ model (shape only, no location, no results), exported tree by tree from R. Each slider shifts all of his real pitches of that type (up to 150 sampled pitches) by the same amount, and the grade is the average prediction. These are <b>model estimates</b>, not promises of real-world results.</p>
+  <div class="controls">
+    <label class="ctl">Pitcher<select id="lpick"></select></label>
+    <div><div class="muted" style="font-size:.8rem;margin-bottom:6px">Pitch</div><div class="pill" id="lpitch"></div></div>
+    <button class="btn" id="lreset" style="margin-left:auto">Reset sliders</button>
+  </div>
+  <div class="callout" id="lcall"></div>
+  <div class="grid g2 lab">
+    <div class="card"><h3>Shape</h3><div id="sliders"></div>
+      <p class="caption">The blue part of each slider track is the middle 98% (1st–99th percentile) of MLB pitches in the same pitch group, the data the model was trained on; dark red is outside it. A <span class="oor-chip">outside training data</span> flag means the average adjusted pitch is outside that band, or more than half of his adjusted pitches are. Out there the trees stop changing, so the grade stops responding and should not be trusted.</p></div>
+    <div>
+      <div class="card"><div class="labscore">
+        <div><div class="muted lab-k">Now (model)</div><div class="lab-big" id="s0">–</div></div>
+        <div class="lab-arrow">→</div>
+        <div><div class="muted lab-k">Adjusted (model)</div><div class="lab-big accent" id="s1">–</div><div class="muted lab-ci" id="s1ci"></div></div>
+        <div><div class="muted lab-k">Change</div><div class="lab-big" id="sd">–</div></div>
+      </div>
+      <p class="caption" id="lnote"></p>
+      <div id="oor"></div></div>
+      <div class="card" style="margin-top:16px"><h3>Nearest MLB comparables</h3>
+        <div id="lmap"></div>
+        <div class="tblwrap"><table class="tbl" id="comps"></table></div>
+        <p class="caption">The 6 closest MLB pitches of the same type (100+ pitches in 2026) to the adjusted shape: distance over velo, IVB, arm-side HB, spin, release height and side, and extension, each scaled by its spread across that pitch type. His own pitch is left out. Stuff+ is the published grade. On the map, grey dots are every MLB pitch of the type, blue are the comparables, the hollow gold ring is his current pitch and the filled gold dot is the adjusted one.</p></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px"><h3>How to read this, and its limits</h3>
+  <ul class="muted" style="margin:0;padding-left:18px">
+    <li><b>Stuff+</b>: 100 = average MLB pitch, 10 points = 1 SD across pitcher-pitch types with 100+ pitches. The model targets expected run value per pitch from shape alone, and that signal is weak per pitch (held-out pitch-level R² ≈ 0.1%). It is useful for ranking pitch types, but don't read small changes as precise.</li>
+    <li><b>The interval</b> is a bootstrap over his sampled pitches. It shows how much the grade depends on which pitches were sampled, not the model's own error, so the true uncertainty is larger.</li>
+    <li><b>Sliders move one thing at a time</b>, so they can make shapes that don't exist in real life. In reality spin, axis, arm angle and movement move together, and spin axis and arm angle stay fixed here. Release height and side change only the release features, not his arm angle.</li>
+    <li><b>Off-speed differentials</b>: for a secondary pitch, changing velo or movement also changes its gap to his primary fastball, which the model uses. Changing the primary fastball itself leaves those gaps unchanged in this tool, but in real life every other pitch's gap would move too.</li>
+    <li><b>"Now (model)"</b> is the browser model on his sampled pitches. The published Stuff+ (Explorer, Research) came from the same specification. The refit here agrees with it closely but not exactly (xgboost row subsampling): <span id="agree"></span>.</li>
+  </ul></div>
+</div></section>
+<script src="assets/xgb.js?v=c3f4fd8e27"></script>
+<script src="assets/lab.js?v=260b3d6d4b" defer></script>
+<footer><div class="wrap">
+<p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
+<p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
+Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> (<a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
+</div></footer></body></html>

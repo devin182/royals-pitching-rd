@@ -1,0 +1,27 @@
+<section style="padding-top:44px"><div class="wrap">
+  <div class="eyebrow">Research · sequencing</div>
+  <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">Does the previous pitch matter?</h1>
+  <p class="muted" style="max-width:840px">Pick the pitch that was just thrown (type, location, result) and the count. The bars show the model's estimate of how each next pitch type does, league-wide. The thin marker is the same estimate from a no-sequence baseline that knows only the count, the pitch type and the batter and pitcher hands. Below each estimate is what actually happened after that previous pitch, league and Royals (all counts pooled), with n and 95% intervals.</p>
+  <div class="callout" id="qcall"></div>
+  <div class="card"><h3>Held-out validation: sequence model vs no-sequence baseline</h3>
+    <div class="tblwrap"><table class="tbl" id="qval"></table></div>
+    <p class="caption" id="qvalcap"></p></div>
+  <div class="controls" style="margin-top:22px">
+    <div><div class="muted qk">Previous pitch</div><div class="pill" id="qpt"></div></div>
+    <div><div class="muted qk">Its location</div><div class="pill" id="qloc"></div></div>
+    <div><div class="muted qk">Its result</div><div class="pill" id="qres"></div></div>
+    <label class="ctl">Count now<select id="qcount"></select></label>
+    <div><div class="muted qk">Outcome</div><div class="pill" id="qmet"><button data-m="0" class="on">CSW</button><button data-m="1">Whiff / swing</button><button data-m="2">xRV / 100</button></div></div>
+  </div>
+  <div class="card"><div id="qbars"></div>
+    <p class="caption">Bar = sequence model, league-wide, weighted by the league mix of batter and pitcher hands. Thin white marker = no-sequence baseline for the same count. CSW = called + swinging strikes per pitch. Whiff = whiffs per swing. xRV/100 = expected run value per 100 pitches, pitcher's view (+ is good for the pitcher). "League" and "Royals" give the actual rate after this previous pitch, all counts pooled, with 95% Wilson intervals. Royals rates appear only with 50+ pitches (CSW) or 50+ swings (whiff). Location: zone up and zone down split the rulebook zone at its middle. "Out side" means off the plate horizontally at a height inside the zone.</p></div>
+  <h2 style="margin-top:34px">Royals leads</h2>
+  <div id="qroy" class="grid g2"></div>
+  <p class="caption" id="qroycap"></p>
+  <div class="card" style="margin-top:18px"><h3>Method</h3><ul class="muted" style="margin:0;padding-left:18px">
+    <li>Unit: every pitch after the first in a plate appearance (same pitcher), 2026 regular season, league-wide. Pitch types are grouped: CU covers curveballs, knuckle curves, slurves and slow curves, and FS includes forkballs.</li>
+    <li>Both models use xgboost with identical settings. The sequence model adds the previous pitch's type, location (5 zones) and result, plus a same-type flag. Location of the <i>next</i> pitch is left out on purpose, because the question is about choosing a pitch type, not about how well it is located.</li>
+    <li>Validation: train on games through <span id="qsplit"></span>, test on later games. Lift is the % reduction in held-out log loss (MSE for xRV), with a 95% interval from resampling games.</li>
+    <li>Royals leads compare actual results with the sequence model's expectation, after removing each pitcher's average over- or under-performance on that pitch type, so that a pitcher's overall quality doesn't show up as a "sequencing effect". Code: <a href="code/06_sequencing.R.txt">R/06_sequencing.R</a>.</li></ul></div>
+</div></section>
+<script src="assets/sequencing.js" defer></script>

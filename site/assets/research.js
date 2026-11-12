@@ -5,7 +5,7 @@ const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
 const find = (arr, f) => arr.find(f) || {};
 const last = s => nice(s).split(' ').slice(-1)[0];
 const GRID = '#1f3d66';
-Promise.all(['stuff','vaa','tunnel','counts','fatigue','cases','explorer'].map(n => getJSON(`data/${n}.json`))).then(([S,V,T,C,F,K,E]) => {
+Promise.all(['stuff','vaa','tunnel','counts','fatigue','cases','explorer_index'].map(n => getJSON(`data/${n}.json`))).then(([S,V,T,C,F,K,E]) => {
   // ---- 1. Stuff+ ----------------------------------------------------------
   const v = S.validation; set('split', v.split_date); set('nval', v.n_pitch_types); set('rwhiff', fmt(v.cor_stuff_whiff,2));
   $('valtbl').innerHTML = '<thead><tr><th>Model</th><th>Train</th><th>Holdout</th><th>Trees</th><th>R²</th><th>cor(RV)</th><th>cor(whiff)</th></tr></thead><tbody>' +

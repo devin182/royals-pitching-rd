@@ -13,22 +13,29 @@ PAGES = [
     ("index.html", "Home"),
     ("explorer.html", "Pitcher Explorer"),
     ("research.html", "Research"),
+    ("sequencing.html", "Sequencing"),
+    ("lab.html", "Design Lab"),
     ("tunnel/index.html", "Tunnel Viewer"),
     ("gameplan.html", "Game Plan"),
     ("reports.html", "Reports"),
     ("methods.html", "Methods & Code"),
 ]
 GITHUB = "https://github.com/devin182/royals-pitching-rd"
+# Plotly (1.3 MB) is only loaded by the pages that draw Plotly charts
+PLOTLY_PAGES = {"explorer.html", "research.html"}
+PLOTLY_TAG = '<script src="assets/plotly.min.js" defer></script>'
 HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title} · Devin Jenkinson · Pitching R&amp;D Portfolio</title>
 <meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
 <link rel="stylesheet" href="assets/style.css">
-<script>window.DATA_V="{data_v}";</script><script src="assets/plotly.min.js" defer></script><script src="assets/palette.js" defer></script><script src="assets/app.js" defer></script>
+<script>window.DATA_V="{data_v}";</script>{plotly}<script src="assets/palette.js" defer></script><script src="assets/app.js" defer></script>
 </head><body>
-<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
+<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="" width="28" height="28">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
 <button class="burger" aria-label="Menu">☰</button><ul>{links}</ul></div></nav>
 """
 FOOT = """<footer><div class="wrap">
@@ -44,11 +51,13 @@ for f in list((ROOT / "sql").glob("*.sql")) + list((ROOT / "R").glob("*.R")) + l
 # Pages built here from site_src/; tunnel.html and gameplan.html are self-contained pages copied in from
 # tunnel/ and gameplan/ -- for those we only rewrite the nav list (and add the CI badge) so every page matches.
 NAV = [(n, t) for n, t in PAGES if (SRC / n).exists() or (OUT / n).exists()]
-links = "".join(f'<li><a href="{n}">{t}</a></li>' for n, t in NAV)
+# short nav labels so nine entries fit on one line at desktop widths
+SHORT = {"Pitcher Explorer": "Explorer", "Tunnel Viewer": "Tunnel", "Methods & Code": "Methods"}
+links = "".join(f'<li><a href="{n}">{SHORT.get(t, t)}</a></li>' for n, t in NAV)
 BADGE = f' (<a href="{GITHUB}/actions/workflows/ci.yml">CI status</a>)'
 TUNNEL_NAV = (
     '<div class="nav-inner"><a class="brand" href="../index.html">Devin Jenkinson <span>· Pitching R&amp;D</span></a><ul class="site-links">'
-    + "".join(f'<li><a href="../{n}"{" class=on" if n.startswith("tunnel/") else ""}>{t}</a></li>' for n, t in NAV)
+    + "".join(f'<li><a href="../{n}"{" class=on" if n.startswith("tunnel/") else ""}>{SHORT.get(t, t)}</a></li>' for n, t in NAV)
     + "</ul></div>"
 )
 pal_js = json.dumps({k: v for k, v in json.loads((ROOT / "config" / "pitch_colors.json").read_text()).items() if not k.startswith("_")})
@@ -61,9 +70,22 @@ def short_hash(*paths):
     return h.hexdigest()[:10]
 
 
+# Explorer data: one small index (names, arsenal tables, count/region summaries) for every page, plus one file per
+# pitcher with the pitch sample and location grid, fetched only when that pitcher is picked (was a single 1.2 MB file).
+EXP = OUT / "data" / "explorer.json"
+if EXP.exists():
+    exp = json.loads(EXP.read_text())
+    (OUT / "data" / "explorer").mkdir(exist_ok=True)
+    for p in exp:
+        (OUT / "data" / "explorer" / f"{p['id']}.json").write_text(
+            json.dumps({"pitches": p["pitches"], "heat": p["heat"]}, separators=(",", ":"))
+        )
+    idx = [{k: v for k, v in p.items() if k not in ("pitches", "heat")} for p in exp]
+    (OUT / "data" / "explorer_index.json").write_text(json.dumps(idx, separators=(",", ":")))
+
 # Cache busting: every local JS/CSS/JSON reference carries ?v=<content hash>, so a deploy never pairs new HTML
 # with a stale cached script. Content hashes (not timestamps) keep the build reproducible for the CI sync check.
-DATA_V = short_hash(*sorted((OUT / "data").glob("*.json")), *sorted((OUT / "code").glob("*.txt")))
+DATA_V = short_hash(*sorted((OUT / "data").rglob("*.json")), *sorted((OUT / "code").glob("*.txt")))
 
 for name, title in NAV:
     if name.startswith("tunnel/"):
@@ -75,7 +97,16 @@ for name, title in NAV:
         continue
     if (SRC / name).exists():
         body = (SRC / name).read_text()
-        (OUT / name).write_text(HEAD.format(title=title, links=links, data_v=DATA_V) + body + FOOT.format(gh=GITHUB))
+        (OUT / name).write_text(
+            HEAD.format(
+                title=title,
+                links=links,
+                data_v=DATA_V,
+                plotly=PLOTLY_TAG if name in PLOTLY_PAGES else "",
+            )
+            + body
+            + FOOT.format(gh=GITHUB)
+        )
         continue
     html = (OUT / name).read_text()
     head, sep, rest = html.partition('<button class="burger" aria-label="Menu">☰</button><ul>')

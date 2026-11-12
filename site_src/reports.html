@@ -14,7 +14,7 @@
   <iframe id="cardframe" class="report" title="Pitcher card" loading="lazy"></iframe>
 </div></section>
 <script>
-document.addEventListener('DOMContentLoaded',()=>getJSON('data/explorer.json').then(d=>{
+document.addEventListener('DOMContentLoaded',()=>getJSON('data/explorer_index.json').then(d=>{
   const s=document.getElementById('cardpick'); s.innerHTML=d.map(p=>`<option value="${p.id}">${nice(p.name)}</option>`).join('');
   const go=()=>{const u=`reports/cards/${s.value}.html`; document.getElementById('cardframe').src=u; document.getElementById('cardopen').href=u;};
   s.onchange=go; go(); }));

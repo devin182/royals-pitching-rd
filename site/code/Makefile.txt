@@ -5,8 +5,8 @@ SEASON  ?= 2026
 # pitcher id for the sample PDF card (Michael Wacha)
 FEATURED ?= 608379
 
-.PHONY: all fetch db model analysis report pdf pages serve clean
-all: fetch db model analysis report pdf pages
+.PHONY: all fetch db model analysis lab sequencing report pdf pages serve clean
+all: fetch db model analysis lab sequencing report pdf pages
 
 fetch:      ## download pitch-level CSVs (one per day) + player names
 	SEASON=$(SEASON) python3 scripts/fetch_statcast.py
@@ -20,6 +20,13 @@ model:      ## Stuff+ (xgboost) with temporal-holdout validation
 
 analysis:   ## research analyses -> site/data/*.json
 	$(RSCRIPT) R/03_analysis.R
+
+lab:        ## export Stuff+ trees + Royals samples for the in-browser Pitch Design Lab
+	$(RSCRIPT) R/05_design_lab.R
+	node tests/js/lab.test.js
+
+sequencing: ## previous-pitch sequencing model vs no-sequence baseline -> site/data/sequencing.json
+	$(RSCRIPT) R/06_sequencing.R
 
 report:     ## daily report + pitcher cards (R Markdown with SQL chunks)
 	$(RSCRIPT) R/04_reports.R

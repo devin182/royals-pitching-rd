@@ -4,11 +4,13 @@
 <meta name="description" content="Independent pitching analytics portfolio: Statcast pitch-level analysis of the 2026 Kansas City Royals staff with DuckDB SQL, R and xgboost.">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
-<link rel="stylesheet" href="assets/style.css?v=1dd631521a">
-<script>window.DATA_V="4dff098e26";</script><script src="assets/plotly.min.js?v=72409fd95b" defer></script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=355ccf4e85" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="assets/style.css?v=15ed2a0758">
+<script>window.DATA_V="8e8686eb20";</script><script src="assets/plotly.min.js?v=72409fd95b" defer></script><script src="assets/palette.js?v=b812f039e0" defer></script><script src="assets/app.js?v=355ccf4e85" defer></script>
 </head><body>
-<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
-<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Pitcher Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="tunnel/index.html">Tunnel Viewer</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods & Code</a></li></ul></div></nav>
+<nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="" width="28" height="28">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
+<button class="burger" aria-label="Menu">☰</button><ul><li><a href="index.html">Home</a></li><li><a href="explorer.html">Explorer</a></li><li><a href="research.html">Research</a></li><li><a href="sequencing.html">Sequencing</a></li><li><a href="lab.html">Design Lab</a></li><li><a href="tunnel/index.html">Tunnel</a></li><li><a href="gameplan.html">Game Plan</a></li><li><a href="reports.html">Reports</a></li><li><a href="methods.html">Methods</a></li></ul></div></nav>
 <section style="padding-top:44px"><div class="wrap">
   <div class="eyebrow">Interactive</div>
   <h1 style="font-size:clamp(1.8rem,3.4vw,2.6rem)">Pitcher Explorer</h1>
@@ -124,10 +126,12 @@ function render(){
   document.getElementById('cardlink').href=`reports/cards/${p.id}.html`;
 }
 document.addEventListener('DOMContentLoaded',()=>{
-  getJSON('data/explorer.json').then(d=>{ DATA=d; const sel=document.getElementById('pick');
+  getJSON('data/explorer_index.json').then(d=>{ DATA=d; const sel=document.getElementById('pick');
     sel.innerHTML=d.map((p,i)=>`<option value="${i}">${nice(p.name)} (${p.throws}HP, ${p.n.toLocaleString()} pitches)</option>`).join('');
     const want=new URLSearchParams(location.search).get('p'); const idx=Math.max(0,d.findIndex(p=>String(p.id)===want));
-    sel.value=idx; CUR=d[idx]; render(); sel.onchange=()=>{CUR=d[sel.value];render();};
+    // pitch sample + location grid live in data/explorer/<id>.json, loaded when the pitcher is picked
+    const pick=i=>getJSON(`data/explorer/${d[i].id}.json`).then(x=>{ CUR=Object.assign(d[i],x); render(); });
+    sel.value=idx; pick(idx); sel.onchange=()=>pick(sel.value);
     document.querySelectorAll('#metric button').forEach(b=>b.onclick=()=>{MET=b.dataset.m;document.querySelectorAll('#metric button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
     document.querySelectorAll('#side button').forEach(b=>b.onclick=()=>{SIDE=b.dataset.s;document.querySelectorAll('#side button').forEach(x=>x.classList.toggle('on',x===b));heat(CUR);});
   });
