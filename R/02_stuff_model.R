@@ -7,8 +7,9 @@
 # Validation: temporal holdout (train early season, test late season) at pitch level AND
 #             "does early-season Stuff+ predict late-season run value better than early-season results?"
 suppressPackageStartupMessages({ library(DBI); library(duckdb); library(data.table); library(xgboost); library(jsonlite) })
+source("R/lib/pipeline.R")
 set.seed(2026)
-con <- dbConnect(duckdb(), dbdir = "data/statcast.duckdb")
+con <- dbConnect(duckdb(), dbdir = Sys.getenv("DB_PATH", "data/statcast.duckdb"))
 d <- as.data.table(dbGetQuery(con, "
   SELECT game_pk, game_date, pitcher, player_name, pitch_type, pitch_group, is_royals,
          xrv AS rv, -delta_run_exp AS rv_actual, is_swing, is_whiff,
@@ -18,16 +19,14 @@ d <- as.data.table(dbGetQuery(con, "
          velo_diff, ivb_diff, hb_diff
   FROM pitch_features
   WHERE xrv IS NOT NULL AND release_speed IS NOT NULL AND pfx_x IS NOT NULL"))
-feats <- c("release_speed","ivb","hb_arm","release_spin_rate","spin_axis_arm","release_extension",
-           "release_pos_z","rel_side_arm","arm_angle","velo_diff","ivb_diff","hb_diff")
+feats <- STUFF_FEATURES
 # fastballs: differentials are ~0 for the primary FB, keep them (they identify secondary FBs, e.g. a cutter)
 split_date <- quantile(as.numeric(d$game_date), 0.65, type = 1)
 d[, holdout := as.numeric(game_date) > split_date]
-params <- list(objective = "reg:squarederror", eta = 0.03, max_depth = 5, min_child_weight = 200,
-               subsample = 0.8, colsample_bytree = 0.8, nthread = 8)
+params <- STUFF_PARAMS
 metrics <- list(); importance <- list()
 d[, pred_hold := NA_real_]; d[, pred := NA_real_]
-for (g in c("Fastball","Breaking","Offspeed")) {
+for (g in c("Fastball", "Breaking", "Offspeed")) {
   tr <- d[pitch_group == g & !holdout]; te <- d[pitch_group == g & holdout]
   dtr <- xgb.DMatrix(as.matrix(tr[, feats, with = FALSE]), label = tr$rv, missing = NA)
   dte <- xgb.DMatrix(as.matrix(te[, feats, with = FALSE]), label = te$rv, missing = NA)
@@ -60,14 +59,14 @@ agg <- d[, .(n = .N, pred = mean(pred), rv100 = 100 * mean(rv_actual), xrv100 = 
              is_royals = any(is_royals)), by = .(pitcher, pitch_type, pitch_group)]
 ref <- agg[n >= 100]
 mu <- weighted.mean(d$pred); sdv <- sd(ref$pred)
-agg[, stuff_plus := round(100 + 10 * (pred - mu) / sdv)]
+agg[, stuff_plus := stuff_plus(pred, mu, sdv)]
 # ---- predictive validity: early-season grades vs late-season results (same pitcher & pitch type)
 fit_half <- function(h) d[holdout == h, .(n = .N, rv100 = 100 * mean(rv_actual)), by = .(pitcher, pitch_type)]
 # early-season "stuff": average of holdout-free predictions = predictions from models trained on early data.
 # Re-score early pitches with the early-trained models' cousins: use full-season model only for publishing,
 # and for validation use the early-window model's in-sample prediction (no late info used).
 early <- d[holdout == FALSE]
-early_pred <- rbindlist(lapply(c("Fastball","Breaking","Offspeed"), function(g) {
+early_pred <- rbindlist(lapply(c("Fastball", "Breaking", "Offspeed"), function(g) {
   tr <- early[pitch_group == g]
   m <- xgb.train(params, xgb.DMatrix(as.matrix(tr[, feats, with = FALSE]), label = tr$rv, missing = NA),
                  nrounds = metrics[[g]]$nrounds, verbose = 0)

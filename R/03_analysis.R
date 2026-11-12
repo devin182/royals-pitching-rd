@@ -1,7 +1,7 @@
 # 03_analysis.R -- research analyses + JSON exports for the static site.
 # Every number written here is computed from data/statcast.duckdb (Baseball Savant pitch-level data).
 suppressPackageStartupMessages({ library(DBI); library(duckdb); library(data.table); library(jsonlite) })
-con <- dbConnect(duckdb(), dbdir = "data/statcast.duckdb")
+con <- dbConnect(duckdb(), dbdir = Sys.getenv("DB_PATH", "data/statcast.duckdb"), read_only = TRUE)
 q <- function(sql) as.data.table(dbGetQuery(con, sql))
 out <- "site/data"; dir.create(out, recursive = TRUE, showWarnings = FALSE)
 wj <- function(x, f) write_json(x, file.path(out, f), auto_unbox = TRUE, digits = 4, na = "null", dataframe = "rows")
@@ -64,17 +64,21 @@ tun_bins <- q("WITH s AS (
    GROUP BY 1 ORDER BY 1")
 roy_pairs <- q("SELECT s.pitcher, a.player_name, prev_type, s.pitch_type, n, whiff_rate, chase_rate, tunnel_in, plate_in,
                        plate_in / NULLIF(tunnel_in, 0) AS split_ratio, rv100
-                FROM sequences s JOIN (SELECT pitcher, any_value(player_name) player_name FROM pitch_features WHERE is_royals GROUP BY 1) a USING (pitcher)
+                FROM sequences s
+                JOIN (SELECT pitcher, any_value(player_name) player_name
+                      FROM pitch_features WHERE is_royals GROUP BY 1) a USING (pitcher)
                 WHERE is_royals AND n >= 40 AND prev_type <> s.pitch_type")
 wj(list(league_bins = tun_bins, league_pairs = pairs_lg, royals = roy_pairs), "tunnel.json")
 
 # ---------- 4. Count leverage usage with empirical-Bayes shrinkage ------------------------
 K_RV <- 250  # prior weight (pitches) toward league average for the same pitch type & count group
 cu <- q("SELECT pitcher, any_value(player_name) player_name, pitch_type,
-           CASE WHEN strikes = 2 THEN 'Two strikes' WHEN balls > strikes THEN 'Behind' WHEN balls = strikes THEN 'Even' ELSE 'Ahead' END AS cnt,
+           CASE WHEN strikes = 2 THEN 'Two strikes' WHEN balls > strikes THEN 'Behind'
+                WHEN balls = strikes THEN 'Even' ELSE 'Ahead' END AS cnt,
            count(*) n, sum(xrv) xrv_sum, sum(is_whiff::INT) whiffs, sum(is_swing::INT) swings
          FROM pitch_features WHERE is_royals GROUP BY ALL")
-lg <- q("SELECT pitch_type, CASE WHEN strikes = 2 THEN 'Two strikes' WHEN balls > strikes THEN 'Behind' WHEN balls = strikes THEN 'Even' ELSE 'Ahead' END AS cnt,
+lg <- q("SELECT pitch_type, CASE WHEN strikes = 2 THEN 'Two strikes' WHEN balls > strikes THEN 'Behind'
+                WHEN balls = strikes THEN 'Even' ELSE 'Ahead' END AS cnt,
            avg(xrv) lg_xrv FROM pitch_features GROUP BY ALL")
 cu <- merge(cu, lg, by = c("pitch_type", "cnt"), all.x = TRUE)
 cu[, `:=`(xrv100_raw = 100 * xrv_sum / n,

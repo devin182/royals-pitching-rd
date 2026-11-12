@@ -1,5 +1,7 @@
 # Royals 2026 Pitching R&D Portfolio
 
+[![CI](https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml/badge.svg)](https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml)
+
 **Live site: https://devin182.github.io/royals-pitching-rd/**
 
 An end-to-end pitching analytics project built on public Statcast data for the 2026 Kansas City Royals staff, by Devin Jenkinson
@@ -44,7 +46,13 @@ make all       # fetch → sql → model → analysis → reports → pdf → pa
 make daily     # the in-season morning job: fetch → db → report → pdf
 make serve     # http://localhost:8000
 ```
-`site/` is deployed to GitHub Pages by `.github/workflows/pages.yml` on every push to `main`.
+## Tests and CI
+- `Rscript tests/testthat.R` runs testthat suites against a small committed fixture (`tests/fixtures/`: 30 games, ~8.6k pitches), so CI never needs the raw data:
+  - **features**: shrinkage, arm-side mirroring, VAA (the SQL version is checked against an R reference implementation), Stuff+ scaling
+  - **sql**: row counts, nulls, physical value ranges, pitch-type coverage, flag consistency, arsenal and daily-report coherence
+  - **model**: Stuff+ trains and predicts; a deterministic fit is compared to frozen predictions (`tests/freeze_model.R` regenerates them)
+- Lint: `lintr` (R, `.lintr`) and `ruff` (Python, `ruff.toml`).
+- `.github/workflows/ci.yml` runs on every push and PR. `.github/workflows/pages.yml` deploys `site/` to GitHub Pages only after CI passes on `main`.
 
 ## Notes on method
 - Movement is mirrored for left-handers so arm side is always positive.

@@ -1,0 +1,71 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  python:
+    name: Python lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check scripts tests
+      - run: ruff format --check scripts tests
+
+  r:
+    name: R lint + tests (testthat, SQL/data assertions, frozen model)
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::DBI
+            any::duckdb
+            any::data.table
+            any::xgboost
+            any::jsonlite
+            any::testthat
+            any::lintr
+      - name: lintr
+        run: |
+          l <- c(lintr::lint_dir("R"), lintr::lint_dir("tests"))
+          print(l)
+          if (length(l) > 0) quit(status = 1)
+        shell: Rscript {0}
+      - name: testthat
+        run: Rscript tests/testthat.R
+
+  site:
+    name: Site build is in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Rebuild pages and check nothing changed
+        run: |
+          python3 scripts/build_pages.py
+          git diff --exit-code -- site
+      - name: No visible TODO text in built pages
+        run: |
+          ! grep -n "TODO" site/*.html
+      - name: Data files are valid JSON
+        run: |
+          for f in site/data/*.json; do python3 -m json.tool "$f" > /dev/null || exit 1; done

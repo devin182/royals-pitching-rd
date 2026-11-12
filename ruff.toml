@@ -1,0 +1,9 @@
+line-length = 140
+target-version = "py311"
+extend-exclude = ["site", "data", "brand", "tunnel", "gameplan", "design_v2"]
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E701", "E702"]
+
+[lint.per-file-ignores]
+"scripts/build_pages.py" = ["E501"]  # HTML templates

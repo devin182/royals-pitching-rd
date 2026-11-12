@@ -6,6 +6,7 @@ output:
     theme: null
     css: report.css
     mathjax: null
+    highlight: null
 params:
   pitcher: NULL
   db: "../data/statcast.duckdb"
