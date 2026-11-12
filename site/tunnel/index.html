@@ -6,7 +6,7 @@
   <title>Pitch tunnel viewer · Devin Jenkinson · Pitching R&amp;D</title>
   <meta name="description" content="3D catcher's-eye view of average 2026 Royals pitch trajectories, with y-matched separation at the 23.8 ft commit point and at the plate.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=1e4a3c15b8">
+  <link rel="stylesheet" href="style.css?v=f653801023">
   <style>
     .site-links{display:flex;gap:4px;margin-left:auto;overflow-x:auto;scrollbar-width:none;list-style:none;padding:0;margin-top:0;margin-bottom:0}
     .site-links a{display:block;white-space:nowrap;color:#9AA3B5;text-decoration:none;font-size:14px;padding:6px 10px;border-radius:6px}
@@ -26,7 +26,7 @@
   </script>
 </head>
 <body>
-  <header class="nav"><!--site-nav--><div class="nav-inner"><a class="brand" href="../index.html">Devin Jenkinson <span>· Pitching R&amp;D</span></a><ul class="site-links"><li><a href="../index.html">Home</a></li><li><a href="../explorer.html">Pitcher Explorer</a></li><li><a href="../research.html">Research</a></li><li><a href="../tunnel/index.html" class=on>Tunnel Viewer</a></li><li><a href="../gameplan.html">Game Plan</a></li><li><a href="../reports.html">Reports</a></li><li><a href="../methods.html">Methods & Code</a></li></ul></div><!--/site-nav--></header>
+  <header class="nav"><!--site-nav--><div class="nav-inner"><a class="brand" href="../index.html">Devin Jenkinson <span>· Pitching R&amp;D</span></a><ul class="site-links"><li><a href="../index.html">Home</a></li><li><a href="../explorer.html">Explorer</a></li><li><a href="../research.html">Research</a></li><li><a href="../sequencing.html">Sequencing</a></li><li><a href="../lab.html">Design Lab</a></li><li><a href="../tunnel/index.html" class=on>Tunnel</a></li><li><a href="../gameplan.html">Game Plan</a></li><li><a href="../reports.html">Reports</a></li><li><a href="../methods.html">Methods</a></li></ul></div><!--/site-nav--></header>
   <main>
     <h1>Pitch tunnel viewer</h1>
     <p class="lead">Compare any two pitch types for a 2026 Royals pitcher. Paths are the average Statcast trajectory of each type. The gold frame and rings mark the commit point, 23.8 ft in front of the plate (about 167 ms before it arrives). Drag to orbit; pick a camera preset to fly back.</p>
@@ -76,6 +76,11 @@
         <div class="hud-meta" id="hudMeta">—</div>
         <div class="hud-commit" id="hudCommit">Commit point · 23.8 ft · ~167 ms before the plate</div>
       </div>
+      <div class="zoom" role="group" aria-label="Zoom (or use the mouse wheel / pinch)">
+        <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+        <button type="button" id="zoomLvl" aria-label="Reset zoom" title="Reset zoom">1.0×</button>
+        <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+      </div>
       <div class="transport">
         <button type="button" id="playBtn" class="primary" aria-label="Play">Play</button>
         <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Flight progress">
@@ -83,6 +88,7 @@
           <button type="button" class="spd on" data-speed="0.25">0.25×</button><button type="button" class="spd" data-speed="0.5">0.5×</button><button type="button" class="spd" data-speed="1">1×</button>
         </div>
         <label class="paths"><input type="checkbox" id="showPaths"> Full paths</label>
+        <label class="paths" title="Draws the ball 2.5× its real size so it is easier to follow"><input type="checkbox" id="bigBall"> Bigger ball <span class="nts">(not to scale)</span></label>
         <span class="badge" id="clock">0.000 s</span>
       </div>
     </div>
@@ -95,8 +101,8 @@
       then solved back to release (<span class="mono">y = 60.5</span> ft minus extension) and forward to the front of the plate
       (<span class="mono">y = 17/12</span> ft). <strong>Separation is y-matched</strong> — the distance in the x–z plane
       at the same distance from the plate — at the commit point (23.8 ft in front of the plate, about when a hitter has to decide)
-      and again at the plate, in inches. Playback is time-synchronized at release (0.25×, 0.5× or real time); the faster pitch reaches the plate first. Balls are drawn to scale (2.9 in) with a ring in the pitch-type colour so a distant ball stays easy to find; the comet tail shows the last 75 ms of flight, and <em>Full paths</em> draws each whole trajectory as a thin line. The HUD gap is the distance between the two pitches at the same distance from the plate.
-      Data: Baseball Savant Statcast via this repo's DuckDB. No club marks are used.
+      and again at the plate, in inches. Playback is time-synchronized at release (0.25×, 0.5× or real time); the faster pitch reaches the plate first. Balls are drawn to scale (2.9 in) unless <em>Bigger ball</em> is on (2.5×, not to scale), with a ring in the pitch-type colour so a distant ball stays easy to find; the comet tail shows the last 75 ms of flight, and <em>Full paths</em> draws each whole trajectory as a thin line. The HUD gap is the distance between the two pitches at the same distance from the plate.
+      Data: Baseball Savant Statcast via this repo's DuckDB. The <em>Catcher</em> view sits at a crouched eye height (3.3 ft), 7 ft behind the plate, with a telephoto lens. Zoom (+/−, mouse wheel or pinch) narrows the lens without moving the camera. No club marks are used.
     </p>
   </main>
   <footer>
@@ -104,6 +110,6 @@
     Team abbreviations and player names are used only to describe public data.
     Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (2026 regular season). Code: <a href="https://github.com/devin182/royals-pitching-rd">GitHub repo</a> (<a href="https://github.com/devin182/royals-pitching-rd/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a>
   </footer>
-  <script type="module" src="app.js?v=907fc469da"></script>
+  <script type="module" src="app.js?v=ba8c315dbb"></script>
 </body>
 </html>

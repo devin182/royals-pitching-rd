@@ -11,7 +11,7 @@ const q = new URLSearchParams(location.search);
 
 const state = {
   data: null, pitcher: null, typeA: null, typeB: null,
-  progress: 0, playing: false, speed: 0.25, showPaths: false, view: "catcher",
+  progress: 0, playing: false, speed: 0.25, showPaths: false, view: "catcher", zoom: 1, bigBall: false,
   webgl: false, lastTs: 0, hold: 0,
 };
 let three = null;
@@ -576,10 +576,14 @@ async function initThree() {
   controls.minDistance = 3;
   controls.maxDistance = 140;
   controls.enablePan = true;
+  // Zoom changes the lens (field of view), not the camera position, so the hitter's-eye viewpoint stays put.
+  controls.enableZoom = false;
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.PAN };
 
   // Camera presets [position, target, horizontal FOV deg], statcast coords.
   const VIEWS = {
-    catcher: { pos: [0, -16, 4.6], tgt: [0, 22, 2.6], hfov: 30, vmin: 18 },
+    // hitter's-eye catcher view: crouched eye height (~3.3 ft) a few feet behind the plate, telephoto lens
+    catcher: { pos: [0, -7, 3.3], tgt: [0, 30, 1.05], hfov: 28, vmin: 24 },
     batterR: { pos: [-2.9, 1.2, 5.6], tgt: [0, 40, 4.0], hfov: 40, vmin: 22 },
     batterL: { pos: [2.9, 1.2, 5.6], tgt: [0, 40, 4.0], hfov: 40, vmin: 22 },
     side: { pos: [34, 31, 4.5], tgt: [0, 31, 3.2], hfov: 76 },
@@ -592,7 +596,8 @@ async function initThree() {
     const aspect = Math.max(r.width, 1) / Math.max(r.height, 1);
     camera.aspect = aspect;
     const h = (hfov * Math.PI) / 180;
-    camera.fov = Math.min(80, Math.max(vmin, (2 * Math.atan(Math.tan(h / 2) / Math.max(aspect, 0.35)) * 180) / Math.PI));
+    const f = Math.min(80, Math.max(vmin, (2 * Math.atan(Math.tan(h / 2) / Math.max(aspect, 0.35)) * 180) / Math.PI));
+    camera.fov = (2 * Math.atan(Math.tan((f * Math.PI) / 360) / state.zoom) * 180) / Math.PI;
     camera.updateProjectionMatrix();
   }
   function setView(name, instant) {
@@ -600,6 +605,7 @@ async function initThree() {
     state.view = name;
     document.querySelectorAll(".cam").forEach((b) => b.classList.toggle("on", b.dataset.view === name));
     const to = { pos: V(v.pos), tgt: V(v.tgt), hfov: v.hfov, vmin: v.vmin || 0 };
+    setZoom(1);
     if (instant) {
       camera.position.copy(to.pos); controls.target.copy(to.tgt); hfov = to.hfov; vmin = to.vmin;
       camera.up.set(0, 1, 0); applyFov(); controls.update();
@@ -608,6 +614,19 @@ async function initThree() {
     tween = { t0: performance.now(), dur: 900, from: { pos: camera.position.clone(), tgt: controls.target.clone(), hfov, vmin }, to };
     controls.enabled = false;
   }
+
+  function setZoom(z) {
+    state.zoom = clamp(z, 1, 6);
+    const zl = $("zoomLvl"); if (zl) zl.textContent = state.zoom.toFixed(1) + "×";
+    applyFov();
+  }
+  renderer.domElement.addEventListener("wheel", (e) => { e.preventDefault(); setZoom(state.zoom * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  let pinch = null; // two-finger pinch -> lens zoom
+  const pdist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  renderer.domElement.addEventListener("touchstart", (e) => { if (e.touches.length === 2) pinch = { d: pdist(e.touches), z: state.zoom }; }, { passive: true });
+  renderer.domElement.addEventListener("touchmove", (e) => { if (pinch && e.touches.length === 2) setZoom(pinch.z * pdist(e.touches) / pinch.d); }, { passive: true });
+  renderer.domElement.addEventListener("touchend", (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true });
+  function setBig(on) { state.bigBall = on; if (objs) objs.balls.forEach((b) => b.ball.scale.setScalar(on ? 2.5 : 1)); }
 
   function resize() {
     const r = canvas.getBoundingClientRect();
@@ -653,6 +672,7 @@ async function initThree() {
     const balls = [makeBall(cA), makeBall(cB)];
     balls.forEach((b) => { dynamic.add(b.grp); dynamic.add(b.shadow); });
     objs = { pair, paths, tails, balls, rings, cplane, cframe };
+    setBig(state.bigBall);
     sync();
   }
   function setPaths(on) { if (objs) objs.paths.forEach((l) => (l.visible = on)); }
@@ -706,7 +726,7 @@ async function initThree() {
   window.addEventListener("resize", resize);
   resize();
   setView(VIEWS[q.get("view")] ? q.get("view") : "catcher", true);
-  three = { rebuild, sync, frame, setView, setPaths };
+  three = { rebuild, sync, frame, setView, setPaths, setZoom, setBig };
 }
 
 function bind() {
@@ -724,6 +744,10 @@ function bind() {
     updateHud();
   }));
   document.querySelectorAll(".cam").forEach((b) => b.addEventListener("click", () => { if (three) three.setView(b.dataset.view); }));
+  $("zoomIn").addEventListener("click", () => three && three.setZoom(state.zoom * 1.25));
+  $("zoomOut").addEventListener("click", () => three && three.setZoom(state.zoom / 1.25));
+  $("zoomLvl").addEventListener("click", () => three && three.setZoom(1));
+  $("bigBall").addEventListener("change", (e) => three && three.setBig(e.target.checked));
   $("showPaths").addEventListener("change", (e) => { state.showPaths = e.target.checked; if (three) three.setPaths(state.showPaths); });
   window.addEventListener("keydown", (e) => {
     if (e.code === "Space" && !["SELECT", "INPUT", "BUTTON"].includes(e.target.tagName)) { e.preventDefault(); $("playBtn").click(); }
@@ -753,9 +777,12 @@ async function main() {
     $("fallback").classList.add("show");
     document.querySelectorAll(".cam").forEach((b) => { b.disabled = true; b.title = "3D camera views need WebGL"; });
     $("showPaths").closest("label").style.display = "none";
+    $("bigBall").closest("label").style.display = "none";
+    document.querySelector(".zoom").style.display = "none";
     $("hud").style.display = "none";
   }
   if (q.get("speed")) { const b = document.querySelector(`.spd[data-speed="${q.get("speed")}"]`); if (b) b.click(); }
+  if (q.get("big") === "1") { $("bigBall").checked = true; state.bigBall = true; }
   if (q.get("paths") === "1") { $("showPaths").checked = true; state.showPaths = true; }
   const pid = Number(q.get("p")) || data.meta.default_pitcher;
   setPitcher(data.pitchers.some((x) => x.id === pid) ? pid : data.meta.default_pitcher);
