@@ -26,7 +26,8 @@ const fmt = (x,d=1) => x==null||isNaN(x) ? '–' : Number(x).toFixed(d);
 const pct = (x,d=0) => x==null||isNaN(x) ? '–' : (100*x).toFixed(d)+'%';
 const sgn = (x,d=1) => x==null||isNaN(x) ? '–' : (x>0?'+':'')+Number(x).toFixed(d);
 const nice = n => n.replace(/^(.*), (.*)$/,'$2 $1');
-const getJSON = f => fetch(f).then(r => r.json());
+const withV = f => f + (f.includes('?') ? '' : '?v=' + (window.DATA_V || ''));   // cache-bust data with the build's content hash
+const getJSON = f => fetch(withV(f)).then(r => r.json());
 function stuffColor(s){ if(s==null) return '#5b6b7f'; const t=Math.max(-1,Math.min(1,(s-100)/15));
   return t>=0 ? `rgb(${Math.round(232-110*t)},${Math.round(238-20*t)},${Math.round(244-80*t)})` : `rgb(${Math.round(232+20*-t)},${Math.round(238-110*-t)},${Math.round(244-120*-t)})`; }
 document.addEventListener('DOMContentLoaded', () => {

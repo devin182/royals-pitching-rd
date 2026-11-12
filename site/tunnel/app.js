@@ -626,7 +626,7 @@ async function main() {
   bind();
   let data;
   try {
-    const res = await fetch("tunnel.json");
+    const res = await fetch("tunnel.json?v=fbecce1532");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data = await res.json();
   } catch (err) {

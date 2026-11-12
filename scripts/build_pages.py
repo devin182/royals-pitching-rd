@@ -1,6 +1,7 @@
 """Assemble static pages: site_src/<page>.html bodies + shared head/nav/footer -> site/<page>.html.
 Also copies the SQL / R source into site/code so the Methods page shows the real pipeline code."""
 
+import hashlib
 import json
 import pathlib
 import re
@@ -25,7 +26,7 @@ HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml"><link rel="icon" href="img/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="img/apple-touch-icon-180.png">
 <link rel="stylesheet" href="assets/style.css">
-<script src="assets/plotly.min.js" defer></script><script src="assets/palette.js" defer></script><script src="assets/app.js" defer></script>
+<script>window.DATA_V="{data_v}";</script><script src="assets/plotly.min.js" defer></script><script src="assets/palette.js" defer></script><script src="assets/app.js" defer></script>
 </head><body>
 <nav class="nav"><div class="wrap"><a class="brand" href="index.html"><img src="img/favicon.svg" alt="">Devin Jenkinson <span class="muted" style="font-weight:500">· Pitching R&amp;D</span></a>
 <button class="burger" aria-label="Menu">☰</button><ul>{links}</ul></div></nav>
@@ -33,19 +34,32 @@ HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 FOOT = """<footer><div class="wrap">
 <p>Independent portfolio project by Devin Jenkinson. Not affiliated with, endorsed by, or produced for Major League Baseball or any MLB club. Team abbreviations and player names are used only to describe public data.</p>
 <p>Data: <a href="https://baseballsavant.mlb.com/statcast_search">Baseball Savant Statcast search</a> (public pitch-level data, 2026 regular season, <span data-meta="first_day"></span> to <span data-meta="last_day"></span>); player names from the MLB Stats API. Built <span data-meta="built"></span>.
-Code: <a href="{gh}">GitHub repo</a> <a href="{gh}/actions/workflows/ci.yml"><img src="{gh}/actions/workflows/ci.yml/badge.svg" alt="CI status" style="vertical-align:middle;height:20px"></a> · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
+Code: <a href="{gh}">GitHub repo</a> (<a href="{gh}/actions/workflows/ci.yml">CI status</a>) · Contact: <a href="mailto:devin.jenkinson182@gmail.com">devin.jenkinson182@gmail.com</a></p>
 </div></footer></body></html>"""
 # Pages built here from site_src/; tunnel.html and gameplan.html are self-contained pages copied in from
 # tunnel/ and gameplan/ -- for those we only rewrite the nav list (and add the CI badge) so every page matches.
 NAV = [(n, t) for n, t in PAGES if (SRC / n).exists() or (OUT / n).exists()]
 links = "".join(f'<li><a href="{n}">{t}</a></li>' for n, t in NAV)
-BADGE = f' <a href="{GITHUB}/actions/workflows/ci.yml"><img src="{GITHUB}/actions/workflows/ci.yml/badge.svg" alt="CI status" style="vertical-align:middle;height:20px"></a>'
+BADGE = f' (<a href="{GITHUB}/actions/workflows/ci.yml">CI status</a>)'
 TUNNEL_NAV = (
     '<div class="nav-inner"><a class="brand" href="../index.html">Devin Jenkinson <span>· Pitching R&amp;D</span></a><ul class="site-links">'
     + "".join(f'<li><a href="../{n}"{" class=on" if n.startswith("tunnel/") else ""}>{t}</a></li>' for n, t in NAV)
     + "</ul></div>"
 )
 pal_js = json.dumps({k: v for k, v in json.loads((ROOT / "config" / "pitch_colors.json").read_text()).items() if not k.startswith("_")})
+
+
+def short_hash(*paths):
+    h = hashlib.sha256()
+    for f in paths:
+        h.update(f.read_bytes())
+    return h.hexdigest()[:10]
+
+
+# Cache busting: every local JS/CSS/JSON reference carries ?v=<content hash>, so a deploy never pairs new HTML
+# with a stale cached script. Content hashes (not timestamps) keep the build reproducible for the CI sync check.
+DATA_V = short_hash(*sorted((OUT / "data").glob("*.json")), *sorted((OUT / "code").glob("*.txt")))
+
 for name, title in NAV:
     if name.startswith("tunnel/"):
         html = (OUT / name).read_text()
@@ -56,7 +70,7 @@ for name, title in NAV:
         continue
     if (SRC / name).exists():
         body = (SRC / name).read_text()
-        (OUT / name).write_text(HEAD.format(title=title, links=links) + body + FOOT.format(gh=GITHUB))
+        (OUT / name).write_text(HEAD.format(title=title, links=links, data_v=DATA_V) + body + FOOT.format(gh=GITHUB))
         continue
     html = (OUT / name).read_text()
     head, sep, rest = html.partition('<button class="burger" aria-label="Menu">☰</button><ul>')
@@ -66,7 +80,8 @@ for name, title in NAV:
     # shared pitch palette (config/pitch_colors.json) instead of the page's own
     html = re.sub(r"const PAL=\{[^}]*\};", lambda m: f"const PAL={pal_js};", html)
     gh_link = f'<a href="{GITHUB}">GitHub repo</a>'
-    if gh_link in html and "ci.yml/badge.svg" not in html:
+    html = re.sub(r' <a href="[^"]*/actions/workflows/ci\.yml"><img [^>]*badge\.svg[^>]*></a>', "", html)
+    if gh_link in html and "actions/workflows/ci.yml" not in html:
         html = html.replace(gh_link, gh_link + BADGE, 1)
     (OUT / name).write_text(html)
 code = OUT / "code"
@@ -79,4 +94,29 @@ pal = {k: v for k, v in pal.items() if not k.startswith("_")}
 (OUT / "assets" / "palette.js").write_text(
     "// generated from config/pitch_colors.json by scripts/build_pages.py\nwindow.PITCH_COLORS = " + json.dumps(pal) + ";\n"
 )
+
+
+def bust(html, base):
+    def rep(m):
+        ref = m.group(2)
+        f = (base / ref).resolve()
+        return f'{m.group(1)}="{ref}?v={short_hash(f)}"' if f.exists() else m.group(0)
+
+    html = re.sub(r'\?v=[0-9a-f]{10}(?=["\)])', "", html)
+    return re.sub(r'(src|href)="((?![a-z]+:|//|#)[^"?]+\.(?:js|css|json))"', rep, html)
+
+
+tun = OUT / "tunnel"
+if (tun / "app.js").exists():
+    js = re.sub(
+        r'fetch\("tunnel\.json(\?v=[0-9a-f]+)?"\)',
+        f'fetch("tunnel.json?v={short_hash(tun / "tunnel.json")}")',
+        (tun / "app.js").read_text(),
+    )
+    (tun / "app.js").write_text(js)
+for name, _ in NAV:
+    page = OUT / name
+    page.write_text(bust(page.read_text(), page.parent))
+if (OUT / "gameplan_print.html").exists():
+    (OUT / "gameplan_print.html").write_text(bust((OUT / "gameplan_print.html").read_text(), OUT))
 print("pages:", ", ".join(n for n, _ in PAGES))

@@ -1,0 +1,553 @@
+/* Coach pitcher game-plan card
+   Personal portfolio styles — not a club or MLB identity.
+   Screen default is the navy designed page. For paper copies, add
+   class="print-light" to the <html> element (ink-light, readable on
+   white letter stock). @media print also tightens margins and avoids
+   extra pages; it does not force the light theme on its own. */
+
+
+@page {
+  size: letter; /* 8.5in × 11in */
+  margin: 0.4in;
+}
+
+:root {
+  --color-bg: #0B1F3A;
+  --color-bg-deep: #071428;
+  --color-panel: #0F2747;
+  --color-panel-2: #13305A;
+  --color-line: #1F3D66;
+  --color-powder: #7AB2DD;
+  --color-powder-tint: #C5DCEF;
+  --color-gold: #C9A227;
+  --color-gold-ink: #C9A227; /* use #8F7010 on light paper */
+  --color-text: #E8EEF4;
+  --color-text-muted: #9AA3B5;
+  --color-sheet: #0B1F3A;
+
+  --font-display: "Archivo", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --pitch-ff: #C9A227;
+  --pitch-si: #C44A12;
+  --pitch-fc: #C47A3A;
+  --pitch-sl: #2E94D0;
+  --pitch-st: #16808C;
+  --pitch-cu: #7A75F0;
+  --pitch-kc: #D456B0;
+  --pitch-sv: #A8B4D8;
+  --pitch-ch: #1B8F62;
+  --pitch-fs: #8A5CC8;
+
+  --chart-bg: #0C2342;
+  --chart-grid: rgba(232, 238, 244, 0.12);
+  --chart-axis: #9AA3B5;
+  --chart-ink: #E8EEF4;
+  --chart-halo: #0B1F3A;
+  --watermark: rgba(154, 163, 181, 0.42);
+
+  --rule-header: 2.5pt;
+  --radius: 6px;
+}
+
+html {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  background: #141414;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  font-weight: 400;
+  color: var(--color-text);
+  font-size: 8pt;
+  line-height: 1.35;
+  background: #141414;
+}
+
+/* Padding and borders must count inside flex/grid heights, or the
+   chart sample-size notes get clipped at the bottom of each panel. */
+.sheet, .sheet * { box-sizing: border-box; }
+
+/* Screen: show a letter-sized sheet, 0.4 in padding matches @page. */
+@media screen {
+  body { padding: 28px 16px 48px; }
+  .sheet {
+    width: 8.5in;
+    height: 11in;
+    padding: 0.4in;
+    margin: 0 auto;
+    box-sizing: border-box;
+    background: var(--color-sheet);
+    color: var(--color-text);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+  }
+}
+
+@media print {
+  html, body { background: var(--color-sheet); }
+  body { padding: 0; }
+  .sheet {
+    width: auto;
+    min-height: 10.2in; /* 11in letter minus 0.4in * 2 margins */
+    height: 10.2in;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    overflow: hidden;
+    background: var(--color-sheet);
+    color: var(--color-text);
+  }
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.11in;
+}
+
+/* ---- header --------------------------------------------------- */
+.hdr {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 12px;
+  row-gap: 1px;
+  align-items: end;
+  background: var(--color-bg-deep);
+  border: 1px solid var(--color-line);
+  border-bottom: var(--rule-header) solid var(--color-powder);
+  border-radius: var(--radius);
+  padding: 8px 12px 7px;
+}
+
+.hdr h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18pt;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  margin: 0;
+  color: var(--color-text);
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.hdr .meta-side {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 10pt;
+  color: var(--color-powder-tint);
+  letter-spacing: 0.04em;
+  align-self: center;
+}
+
+.hdr .season {
+  grid-column: 1 / -1;
+  font-size: 8pt;
+  color: var(--color-powder-tint);
+  margin: 3px 0 0;
+}
+
+.hdr .season .mono,
+.hdr .disclaimer {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.hdr .disclaimer {
+  grid-column: 1 / -1;
+  font-size: 6.4pt;
+  color: var(--color-text-muted);
+  margin: 2px 0 0;
+  letter-spacing: 0.01em;
+}
+
+/* ---- section labels ------------------------------------------- */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 6.6pt;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  margin: 0 0 5px;
+}
+
+/* ---- takeaways ------------------------------------------------ */
+.takeaways {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.takeaway {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  padding: 8px 10px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+  page-break-inside: avoid;
+}
+
+.takeaway .top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.takeaway .num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16pt;
+  line-height: 1;
+  color: var(--color-gold);
+  letter-spacing: -0.02em;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 6.2pt;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-gold);
+  color: var(--color-gold);
+  border-radius: 10px;
+  padding: 1px 6px 0;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.tag:empty { display: none; }
+
+.tag-attack { border-color: var(--color-gold); color: var(--color-gold); }
+.tag-avoid  { border-color: var(--color-powder); color: var(--color-powder-tint); }
+.tag-watch  { border-color: var(--color-line); color: var(--color-text-muted); }
+
+.takeaway .line {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 9.2pt;
+  line-height: 1.2;
+  color: var(--color-text);
+  margin: 1px 0 0;
+}
+
+.takeaway .stat {
+  font-family: var(--font-mono);
+  font-size: 7.6pt;
+  font-weight: 500;
+  color: var(--color-powder);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  line-height: 1.3;
+}
+
+.takeaway .detail {
+  font-size: 7.2pt;
+  color: var(--color-text-muted);
+  line-height: 1.32;
+  margin: 0;
+}
+
+/* ---- charts --------------------------------------------------- */
+/* The section itself must grow so leftover page height goes into the
+   charts, not into a gap above the footer. */
+.charts-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  align-items: stretch;
+}
+
+.chart-block {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  padding: 6px 7px 5px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+
+.chart-block h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 7.6pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  margin: 0 0 4px;
+  flex: 0 0 auto;
+}
+
+/* Gold callout — one per chart, a single sentence. */
+.chart-callout {
+  font-family: var(--font-body);
+  font-size: 7.2pt;
+  font-weight: 500;
+  font-style: normal;
+  color: var(--color-gold-ink);
+  border-left: 2.5pt solid var(--color-gold);
+  padding: 1px 0 1px 7px;
+  margin: 0 0 5px;
+  line-height: 1.3;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  flex: 0 0 auto;
+}
+
+.chart-callout:empty { display: none; }
+
+.chart-frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  background: var(--chart-bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.chart-frame > svg,
+.chart-frame > img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+}
+
+.n-note {
+  font-size: 6.3pt;
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.n-note:empty { display: none; }
+
+/* ---- tables --------------------------------------------------- */
+.tables {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(0, 0.92fr);
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.table-block {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  padding: 6px 8px 7px;
+  min-width: 0;
+  page-break-inside: avoid;
+}
+
+.table-block h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 7.6pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  margin: 0 0 5px;
+}
+
+.table-slot:empty::before {
+  content: "‹table slot›";
+  color: var(--color-text-muted);
+  font-size: 7pt;
+}
+
+table.compact {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 6.3pt;
+  line-height: 1.25;
+  table-layout: auto;
+}
+
+table.compact th,
+table.compact td {
+  padding: 2px 3px;
+  text-align: right;
+  border-bottom: 0.6pt solid var(--color-line);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  white-space: nowrap;
+}
+
+table.compact th {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 6.2pt;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  background: var(--color-panel-2);
+  text-transform: none;
+}
+
+table.compact td {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+table.compact th:first-child,
+table.compact td:first-child {
+  text-align: left;
+  font-family: var(--font-body);
+  padding-left: 6px;
+}
+
+table.compact th:last-child,
+table.compact td:last-child { padding-right: 6px; }
+
+table.compact tbody tr:last-child th,
+table.compact tbody tr:last-child td { border-bottom: 0; }
+
+table.compact .pitch-swatch {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 1px;
+  margin-right: 4px;
+  vertical-align: 0.05em;
+  box-shadow: 0 0 0 1px var(--chart-halo);
+}
+
+.table-note {
+  font-size: 6.1pt;
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+}
+
+/* ---- footer --------------------------------------------------- */
+.ftr {
+  margin-top: auto;
+  border-top: 0.75pt solid var(--color-line);
+  padding-top: 5px;
+  font-size: 6.3pt;
+  color: var(--color-text-muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  line-height: 1.35;
+}
+
+.ftr .build {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  white-space: nowrap;
+}
+
+/* ---- light paper variant (coaches print these) ---------------- */
+html.print-light {
+  --color-bg: #F3F6FA;
+  --color-bg-deep: #E8EEF4;
+  --color-panel: #FFFFFF;
+  --color-panel-2: #EEF3F8;
+  --color-line: #D3DCE6;
+  --color-powder: #2E7AB0;
+  --color-powder-tint: #0B1F3A;
+  --color-gold: #C9A227;
+  --color-gold-ink: #8F7010;
+  --color-text: #0B1F3A;
+  --color-text-muted: #5B6B7F;
+  --color-sheet: #FFFFFF;
+  --chart-bg: #F7F9FC;
+  --chart-grid: rgba(11, 31, 58, 0.10);
+  --chart-axis: #5B6B7F;
+  --chart-ink: #0B1F3A;
+  --chart-halo: #FFFFFF;
+  --watermark: rgba(91, 107, 127, 0.40);
+}
+
+html.print-light {
+  background: #d8dde3;
+}
+
+html.print-light .hdr {
+  background: #0B1F3A;
+  border-color: #0B1F3A;
+  border-bottom-color: #C9A227;
+  color: #E8EEF4;
+}
+
+html.print-light .hdr h1 { color: #E8EEF4; }
+html.print-light .hdr .meta-side,
+html.print-light .hdr .season { color: #C5DCEF; }
+html.print-light .hdr .disclaimer { color: #9AA3B5; }
+
+html.print-light .takeaway,
+html.print-light .chart-block,
+html.print-light .table-block {
+  box-shadow: none;
+  background: #FFFFFF;
+}
+
+html.print-light .takeaway .line,
+html.print-light .chart-block h3,
+html.print-light .table-block h3 { color: #0B1F3A; }
+
+html.print-light .tag-avoid { color: #2E7AB0; border-color: #2E7AB0; }
+
+/* Chart SVG that uses these currentColor / CSS variables will follow.
+   Pitch-type labels keep their own fill; only axes / notes use ink. */
+.chart-frame svg .grid line,
+.chart-frame svg .grid path { stroke: var(--chart-grid); }
+.chart-frame svg .axis line,
+.chart-frame svg .axis path { stroke: var(--chart-axis); }
+.chart-frame svg .axis text,
+.chart-frame svg .ax { fill: var(--chart-ink); }
+.chart-frame svg .watermark { fill: var(--watermark); }
+
+/* ---- R Markdown wrapper (html_document adds a container and a title block) ---- */
+.main-container, .container-fluid { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+#header, h1.title { display: none; }
+.chart-frame > img { object-fit: contain; }
+td.na { color: var(--color-text-muted); }
+figure { margin: 0; }

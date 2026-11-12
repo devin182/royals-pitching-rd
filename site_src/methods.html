@@ -42,7 +42,7 @@ function hl(src,isSQL){ let s=src.replace(/&/g,'&amp;').replace(/</g,'&lt;');
 document.addEventListener('DOMContentLoaded',()=>{
   const box=document.getElementById('files');
   box.innerHTML=FILES.map((f,i)=>`<button data-f="${f}" class="${i?'':'on'}">${f}</button>`).join('');
-  const show=f=>fetch('code/'+f+'.txt').then(r=>r.text()).then(t=>{document.getElementById('code').innerHTML=hl(t,f.endsWith('.sql'));
+  const show=f=>fetch(withV('code/'+f+'.txt')).then(r=>r.text()).then(t=>{document.getElementById('code').innerHTML=hl(t,f.endsWith('.sql'));
     box.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.f===f));});
   box.querySelectorAll('button').forEach(b=>b.onclick=()=>show(b.dataset.f)); show(FILES[0]); });
 </script>

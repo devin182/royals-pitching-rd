@@ -4,170 +4,251 @@ output:
   html_document:
     self_contained: true
     theme: null
-    css: report.css
+    css: coach_card.css
     mathjax: null
     highlight: null
+    md_extensions: -tex_math_dollars-tex_math_single_backslash
+    includes:
+      in_header: card_fonts.html
 params:
   pitcher: NULL
   db: "../data/statcast.duckdb"
 ---
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, dev = "png", dpi = 160)
-suppressPackageStartupMessages({ library(DBI); library(duckdb); library(data.table); library(ggplot2) })
+# Coach card (design_v2 template): three data-computed takeaways, three small charts, compact tables last.
+# Every number on the card is computed below from the DuckDB tables; nothing is typed in by hand.
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+suppressPackageStartupMessages({ library(DBI); library(duckdb); library(data.table); library(ggplot2); library(jsonlite) })
 con <- dbConnect(duckdb(), dbdir = params$db, read_only = TRUE)
+q <- function(sql, ...) as.data.table(dbGetQuery(con, sql, params = list(...)))
 pid <- params$pitcher
-if (is.null(pid)) pid <- dbGetQuery(con, "SELECT pitcher FROM pitch_features WHERE is_royals GROUP BY 1 ORDER BY count(*) DESC LIMIT 1")$pitcher
+if (is.null(pid)) pid <- q("SELECT pitcher FROM pitch_features WHERE is_royals GROUP BY 1 ORDER BY count(*) DESC LIMIT 1")$pitcher
 pid <- as.numeric(pid)
-pal <- c(FF="#0B1F3A", SI="#3d6fa8", FC="#7bb2dd", SL="#c9a227", ST="#e07a1f", CU="#7a3e9d", KC="#a05bc4",
-         SV="#b07cc6", CH="#2e9e6a", FS="#1f7a5c", KN="#888888")
+
+# shared pitch-type palette (config/pitch_colors.json, from design_v2/chart_style.md)
+pal_all <- unlist(fromJSON("../config/pitch_colors.json"))
+pal <- pal_all[!startsWith(names(pal_all), "_")]
+col_of <- function(pt) ifelse(pt %in% names(pal), pal[pt], "#9AA3B5")
+K_RV <- 250        # run-value shrinkage prior (pitches), same as the site
+MIN_SW <- 50       # minimum swings before a rate is quoted (chart_style.md n-rule)
+MIN_N <- 30        # minimum pitches before a shape mean is shown at full colour
+
 fmt <- function(x, d = 1) formatC(x, format = "f", digits = d)
+sgn <- function(x, d = 1) ifelse(x >= 0, paste0("+", fmt(x, d)), fmt(x, d))
 pct <- function(x) ifelse(is.na(x), "–", paste0(round(100 * x), "%"))
+woba <- function(x) ifelse(is.na(x), "–", sub("^0", "", fmt(x, 3)))
+esc <- function(x) gsub("&", "&amp;", gsub("<", "&lt;", x, fixed = TRUE), fixed = TRUE)
+low1 <- function(x) tolower(x)
+
+BG <- "#0C2342"; INK <- "#E8EEF4"; MUTED <- "#9AA3B5"; GRID <- "#1F3D66"
+theme_dj <- function(base_size = 7) {
+  theme_minimal(base_size = base_size, base_family = "IBM Plex Sans") %+replace%
+    theme(plot.background = element_rect(fill = BG, colour = NA), panel.background = element_rect(fill = BG, colour = NA),
+          panel.grid.minor = element_blank(), panel.grid.major = element_line(colour = GRID, linewidth = .25),
+          axis.text = element_text(colour = MUTED, size = rel(.9)), axis.title = element_text(colour = INK, size = rel(.95)),
+          strip.text = element_text(family = "Archivo", colour = INK, face = "bold", size = rel(1)),
+          legend.position = "none", plot.margin = margin(4, 6, 4, 4))
+}
+img <- function(p, w, h) {
+  f <- tempfile(fileext = ".png")
+  png(f, width = w, height = h, units = "in", res = 220, type = "cairo", bg = BG)
+  print(p); dev.off()
+  sprintf('<img alt="" src="%s">', knitr::image_uri(f))
+}
 ```
 
-```{sql, connection=con, output.var="info"}
-SELECT any_value(player_name) AS name, any_value(p_throws) AS throws, count(*) AS n,
-       count(DISTINCT game_pk) AS g, min(game_date) AS d0, max(game_date) AS d1,
-       count(DISTINCT CASE WHEN inning = 1 THEN game_pk END) AS starts
-FROM pitch_features WHERE pitcher = ?pid
-```
-
-```{sql, connection=con, output.var="ars"}
-SELECT a.pitch_type, a.pitch_name, a.n, a.usage, a.velo, a.spin, a.ivb, a.hb_arm, a.extension,
-       a.whiff_rate, a.chase_rate, a.csw_rate, a.xwoba_con, s.stuff_plus,
-       (SELECT avg(vaa) FROM pitch_features p WHERE p.pitcher = a.pitcher AND p.pitch_type = a.pitch_type) AS vaa
-FROM arsenal a LEFT JOIN stuff_plus s USING (pitcher, pitch_type)
-WHERE a.pitcher = ?pid ORDER BY a.n DESC
-```
-
-```{sql, connection=con, output.var="pts"}
-SELECT pitch_type, ivb, hb_arm, plate_x, plate_z_norm, is_whiff, is_swing, strikes, stand
-FROM pitch_features WHERE pitcher = ?pid AND pfx_x IS NOT NULL
-```
-
-```{sql, connection=con, output.var="cnt"}
-SELECT CASE WHEN strikes = 2 THEN '2 strikes' WHEN balls > strikes THEN 'Behind' WHEN balls = strikes THEN 'Even' ELSE 'Ahead' END AS cnt,
-       stand, pitch_type, count(*) n, sum(is_whiff::INT) whiffs, sum(is_swing::INT) swings
-FROM pitch_features WHERE pitcher = ?pid GROUP BY ALL
-```
-
-```{r prep}
-ars <- as.data.table(ars); pts <- as.data.table(pts); cnt <- as.data.table(cnt)
+```{r data}
+info <- q("SELECT any_value(player_name) AS name, any_value(p_throws) AS throws, count(*) AS n,
+                  count(DISTINCT game_pk) AS g, min(game_date) AS d0, max(game_date) AS d1,
+                  count(DISTINCT CASE WHEN inning = 1 THEN game_pk END) AS starts,
+                  mode(pitch_team) AS team
+           FROM pitch_features WHERE pitcher = ?", pid)
+ars <- q("SELECT a.pitch_type, a.pitch_name, a.n, a.usage, a.velo, a.spin, a.ivb, a.hb_arm,
+                 a.whiff_rate, a.chase_rate, a.csw_rate, a.xwoba_con, s.stuff_plus
+          FROM arsenal a LEFT JOIN stuff_plus s USING (pitcher, pitch_type)
+          WHERE a.pitcher = ? ORDER BY a.n DESC", pid)
+pts <- q("SELECT pitch_type, ivb, hb_arm, plate_x, plate_z_norm, balls, strikes, stand, vaa, xrv, xwoba_con,
+                 is_swing::INT AS sw, is_whiff::INT AS wh, is_chase::INT AS ch, in_zone::INT AS iz
+          FROM pitch_features WHERE pitcher = ?", pid)
+lg <- q("SELECT pitch_type, avg(xrv) AS lg_xrv FROM pitch_features GROUP BY 1")
 keep <- ars$pitch_type
-pts <- pts[pitch_type %in% keep]; cnt <- cnt[pitch_type %in% keep]
-ars[, label := sprintf("%s (%s)", pitch_name, pitch_type)]
+pts <- pts[pitch_type %in% keep]
+pts[, cnt := fifelse(strikes == 2, "Two strikes", fifelse(balls > strikes, "Behind", fifelse(balls == strikes, "Even", "Ahead")))]
+pts[, cnt := factor(cnt, levels = c("Ahead", "Even", "Behind", "Two strikes"))]
+ars[, label := sprintf("%s (%s)", sub(" Fastball$", "", pitch_name), pitch_type)]
+ars[, vaa := pts[, .(vaa = mean(vaa, na.rm = TRUE)), by = pitch_type][ars, on = "pitch_type"]$vaa]
+rv <- pts[, .(xrv_sum = sum(xrv, na.rm = TRUE), n = .N), by = pitch_type][lg, on = "pitch_type", nomatch = 0]
+rv[, `:=`(xrv100_raw = 100 * xrv_sum / n, xrv100 = 100 * (xrv_sum + K_RV * lg_xrv) / (n + K_RV))]
+ars <- rv[, .(pitch_type, xrv100_raw, xrv100)][ars, on = "pitch_type"]
+name <- sub("^(.*), (.*)$", "\\2 \\1", info$name)
 side_word <- ifelse(info$throws == "R", "RHP", "LHP")
-shrink <- max(0, nrow(ars) - 6) * 0.17   # keep long arsenals on one page
-H1 <- 2.3 - shrink; H2 <- 2.05 - shrink
+nm <- function(pt) low1(ars[pitch_type == pt]$pitch_name)
+fbs <- ars[pitch_type %in% c("FF", "SI", "FC")]
+fb <- if (nrow(fbs)) fbs[1] else ars[1]
 ```
 
-<div class="hdr"><div><h1>`r sub("^(.*), (.*)$", "\\2 \\1", info$name)`</h1>
-<div class="sub">`r side_word` · `r info$g` games (`r info$starts` starts) · `r format(info$n, big.mark=",")` pitches · `r format(as.Date(info$d0), "%b %d")` – `r format(as.Date(info$d1), "%b %d, %Y")` regular season</div></div>
-<div class="tag">Pitcher card / game plan<br>Sample portfolio report by Devin Jenkinson<br>Data: Baseball Savant (public Statcast)</div></div>
+```{r takeaways}
+# 1 · ATTACK: the put-away pitch (highest two-strike whiff/swing on 50+ swings; else the most-used two-strike pitch)
+two <- pts[cnt == "Two strikes", .(n = .N, sw = sum(sw), wh = sum(wh)), by = pitch_type][, share := n / sum(n)][order(-n)]
+two[, whiff := wh / pmax(1, sw)]
+q2 <- two[sw >= MIN_SW][order(-whiff)]
+pa <- if (nrow(q2)) q2[1] else two[1]
+pa_most <- pa$pitch_type == two[1]$pitch_type
+t1 <- list(tag = "Attack",
+  line = if (pa_most) sprintf("The %s is the put-away pitch. Use it to finish at-bats.", nm(pa$pitch_type))
+         else sprintf("Lean on the %s with two strikes. It misses the most bats.", nm(pa$pitch_type)),
+  stat = sprintf("%s of two-strike pitches · %s whiffs/swing (%d swings)", pct(pa$share), pct(pa$whiff), pa$sw),
+  detail = {
+    s <- ars[pitch_type == pa$pitch_type]$stuff_plus
+    nxt <- q2[pitch_type != pa$pitch_type][1]
+    paste0(if (!is.na(s)) sprintf("It grades %d Stuff+. ", s) else "",
+           if (nrow(nxt) && !is.na(nxt$pitch_type)) sprintf("Next best two-strike miss rate: the %s at %s.", nm(nxt$pitch_type), pct(nxt$whiff))
+           else "No other pitch has 50+ two-strike swings.")
+  })
 
-## Arsenal
+# 2 · AVOID: the lowest shrunk run value per 100 (pitcher's view, + = good) among pitches thrown 100+ times
+cand <- ars[n >= 100][order(xrv100)]
+wp <- cand[1]
+beh <- pts[cnt == "Behind", .(n = .N), by = pitch_type][, share := n / sum(n)]
+wp_beh <- beh[pitch_type == wp$pitch_type]$share
+t2 <- if (wp$xrv100 < 0) {
+  list(tag = "Avoid",
+  line = sprintf("Limit the %s. It is his most damaging pitch.", nm(wp$pitch_type)),
+  stat = sprintf("xRV/100 %s shrunk (raw %s) · %s xwOBAcon · %d pitches", sgn(wp$xrv100, 2), sgn(wp$xrv100_raw, 2), woba(wp$xwoba_con), wp$n),
+  detail = sprintf("When behind in the count he throws it %s of the time%s.", pct(if (length(wp_beh)) wp_beh else 0),
+                   if (nrow(cand) > 1) sprintf("; the %s grades %s there instead", nm(cand[.N]$pitch_type), sgn(cand[.N]$xrv100, 2)) else ""))
+} else {
+  list(tag = "Watch",
+  line = sprintf("Every pitch grades above average. The weakest is the %s.", nm(wp$pitch_type)),
+  stat = sprintf("xRV/100 %s shrunk · %d pitches", sgn(wp$xrv100, 2), wp$n),
+  detail = "Shrunk toward the league average for the pitch type (250-pitch prior), so small edges are real but modest.")
+}
 
-```{r arsenal-table, results="asis"}
-tab <- ars[, .(Pitch = label, `#` = n, Usage = pct(usage), Velo = fmt(velo), Spin = round(spin),
-               IVB = fmt(ivb), HB = fmt(hb_arm), Ext = fmt(extension), VAA = fmt(vaa),
-               `Whiff%` = pct(whiff_rate), `Chase%` = pct(chase_rate), `CSW%` = pct(csw_rate),
-               `xwOBAcon` = ifelse(is.na(xwoba_con), "–", sub("^0", "", fmt(xwoba_con, 3))),
-               `Stuff+` = ifelse(is.na(stuff_plus), "–", stuff_plus))]
-knitr::kable(tab, format = "html", escape = FALSE)
-```
-<div class="foot" style="border:0;margin-top:2px">IVB/HB in inches (HB + = arm side). VAA = vertical approach angle at the front of the plate (degrees). Stuff+ = this project's physical-traits model, 100 = MLB average, 10 = 1 SD (see methods).</div>
-
-<div class="grid2">
-<div>
-## Movement profile
-```{r move, fig.width=3.9, fig.height=H1}
-ggplot(pts, aes(hb_arm, ivb, colour = pitch_type)) +
-  geom_hline(yintercept = 0, colour = "grey80") + geom_vline(xintercept = 0, colour = "grey80") +
-  geom_point(alpha = .35, size = .9) +
-  stat_ellipse(level = .68, linewidth = .6) +
-  scale_colour_manual(values = pal, name = NULL) +
-  labs(x = "Horizontal break, in (arm side →)", y = "Induced vertical break, in") +
-  coord_equal(xlim = c(-25, 25), ylim = c(-25, 25)) + theme_minimal(base_size = 8) +
-  theme(legend.position = "right", panel.grid.minor = element_blank())
-```
-</div>
-<div>
-## Pitch mix by count
-```{r mix, fig.width=3.9, fig.height=H1}
-m <- cnt[, .(n = sum(n)), by = .(cnt, pitch_type)][, share := n / sum(n), by = cnt]
-m[, cnt := factor(cnt, levels = c("Ahead", "Even", "Behind", "2 strikes"))]
-m[, pitch_type := factor(pitch_type, levels = rev(keep))]
-ggplot(m, aes(cnt, share, fill = pitch_type)) + geom_col(width = .7) +
-  scale_fill_manual(values = pal, name = NULL, breaks = keep) + scale_y_continuous(labels = scales::percent) +
-  labs(x = NULL, y = "Share of pitches") + theme_minimal(base_size = 8) +
-  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank())
-```
-</div>
-</div>
-
-<div class="grid2">
-<div>
-## Best pitch: where it lands (by batter side)
-```{r loc, fig.width=3.9, fig.height=H2}
-bp <- ars[n >= 50][order(-stuff_plus)][1]$pitch_type
-lp <- pts[pitch_type == bp & !is.na(plate_z_norm)]
-lp[, side := ifelse(stand == "L", "vs LHH", "vs RHH")]
-ggplot(lp, aes(plate_x, plate_z_norm)) +
-  stat_density_2d(aes(fill = after_stat(level)), geom = "polygon", alpha = .85, bins = 7) +
-  geom_point(data = lp[is_whiff == TRUE], shape = 4, size = .8, colour = "#b42318") +
-  annotate("rect", xmin = -0.83, xmax = 0.83, ymin = 0, ymax = 1, fill = NA, colour = "#0B1F3A", linewidth = .5) +
-  scale_fill_gradient(low = "#dcebf7", high = "#0B1F3A", guide = "none") +
-  facet_wrap(~side) + coord_fixed(ratio = 1.6, xlim = c(-1.9, 1.9), ylim = c(-0.7, 1.6)) +
-  labs(x = "Plate x, ft (catcher view)", y = "Height (0 = bottom, 1 = top of zone)",
-       caption = paste0(bp, "; red x = whiff")) + theme_minimal(base_size = 7.5) +
-  theme(panel.grid.minor = element_blank(), plot.caption = element_text(colour = "grey40"))
-```
-</div>
-<div>
-## Fastball velo by pitch count
-```{sql, connection=con, output.var="fat"}
-WITH g AS (SELECT game_pk, pitch_type, release_speed,
-             row_number() OVER (PARTITION BY game_pk ORDER BY at_bat_number, pitch_number) AS pc,
-             count(*) OVER (PARTITION BY game_pk) AS game_n
-           FROM pitch_features WHERE pitcher = ?pid),
-     b AS (SELECT game_pk, avg(release_speed) b FROM g WHERE pc <= 25 AND pitch_type IN ('FF','SI') GROUP BY 1)
-SELECT least(floor((pc - 1) / 15) * 15 + 1, 106) AS pc_bin, count(*) n, avg(release_speed - b) d
-FROM g JOIN b USING (game_pk) WHERE game_n >= 70 AND pitch_type IN ('FF','SI') GROUP BY 1 HAVING count(*) >= 15 ORDER BY 1
-```
-```{r fat-plot, fig.width=3.9, fig.height=H2}
-fat <- as.data.table(fat)
-if (nrow(fat) >= 3) {
-  ggplot(fat, aes(pc_bin + 7, d)) + geom_hline(yintercept = 0, colour = "grey70") +
-    geom_hline(yintercept = -1, colour = "#b42318", linetype = 2, linewidth = .4) +
-    geom_line(colour = "#0B1F3A") + geom_point(aes(size = n), colour = "#0B1F3A") +
-    scale_size_area(max_size = 2.5, guide = "none") +
-    labs(x = "Pitch count in game", y = "mph vs first 25 pitches", caption = "FF + SI, games with 70+ pitches; dashed = -1 mph") +
-    theme_minimal(base_size = 7.5) + theme(panel.grid.minor = element_blank(), plot.caption = element_text(colour = "grey40"))
-} else { plot.new(); text(.5, .5, "Reliever: not enough long outings for a fatigue curve", cex = .8) }
-```
-</div>
-</div>
-
-```{r plan-data}
-# --- rule-based game plan, every number pulled from the tables above ---
-best <- ars[n >= 50][order(-stuff_plus)][1]
-pa <- cnt[cnt == "2 strikes", .(n = sum(n), whiff = sum(whiffs) / pmax(1, sum(swings)), swings = sum(swings)), by = pitch_type][swings >= 20][order(-whiff)][1]
-two_k_use <- cnt[cnt == "2 strikes", .(n = sum(n)), by = pitch_type][, share := n / sum(n)]
-pa_share <- two_k_use[pitch_type == pa$pitch_type]$share
-side <- pts[, .(whiff = sum(is_whiff) / pmax(1, sum(is_swing)), n = .N), by = .(pitch_type, stand)][n >= 40]
-fb <- ars[pitch_type %in% c("FF", "SI", "FC")][1]
-fbh <- pts[pitch_type == fb$pitch_type, .(high = mean(plate_z_norm >= .67, na.rm = TRUE),
-                                         hw = sum(is_whiff & plate_z_norm >= .67, na.rm = TRUE) / pmax(1, sum(is_swing & plate_z_norm >= .67, na.rm = TRUE)),
-                                         lw = sum(is_whiff & plate_z_norm < .33, na.rm = TRUE) / pmax(1, sum(is_swing & plate_z_norm < .33, na.rm = TRUE)))]
+# 3 · WATCH: primary fastball height (top vs bottom third of the zone, 50+ swings each); fallback = best chase pitch
+fp <- pts[pitch_type == fb$pitch_type & !is.na(plate_z_norm)]
+hi <- fp[plate_z_norm >= 2 / 3]; lo <- fp[plate_z_norm < 1 / 3]
+hs <- sum(hi$sw); ls <- sum(lo$sw); hw <- sum(hi$wh) / max(1, hs); lw <- sum(lo$wh) / max(1, ls)
+t3 <- if (hs >= MIN_SW && ls >= MIN_SW) {
+  up <- hw > lw
+  list(tag = "Watch",
+    line = if (up) sprintf("Elevate the %s. Hitters miss it up.", nm(fb$pitch_type)) else sprintf("Keep the %s down. It misses more bats low.", nm(fb$pitch_type)),
+    stat = sprintf("%s whiffs up (%d sw) vs %s down (%d sw) · VAA %s°", pct(hw), hs, pct(lw), ls, fmt(fb$vaa)),
+    detail = sprintf("%s of his %ss finish in the top third of the zone and %s in the bottom third.", pct(nrow(hi) / nrow(fp)), nm(fb$pitch_type), pct(nrow(lo) / nrow(fp))))
+} else {
+  oz <- pts[iz == 0 & pitch_type != pa$pitch_type, .(n = .N, ch = sum(ch)), by = pitch_type][n >= 100][, rate := ch / n][order(-rate)]
+  list(tag = "Watch",
+    line = sprintf("After the %s, hitters chase the %s most.", nm(pa$pitch_type), nm(oz[1]$pitch_type)),
+    stat = sprintf("%s chased on %d out-of-zone pitches", pct(oz[1]$rate), oz[1]$n),
+    detail = sprintf("Fastball height splits are too thin to call (%d swings up, %d down).", hs, ls))
+}
+tk <- list(t1, t2, t3)
 ```
 
-## Game plan (auto-generated from the data above)
-<div class="plan"><ul>
-<li><b>Best pitch by shape:</b> the `r tolower(best$pitch_name)` grades `r best$stuff_plus` Stuff+ and is thrown `r pct(best$usage)` of the time (`r pct(best$whiff_rate)` whiff rate on swings).</li>
-<li><b>Put-away pitch:</b> with two strikes the `r tolower(ars[pitch_type == pa$pitch_type]$pitch_name)` gets `r pct(pa$whiff)` whiffs per swing (`r pa$swings` swings) and makes up `r pct(pa_share)` of two-strike pitches.</li>
-<li><b>Fastball height:</b> `r pct(fbh$high)` of his `r tolower(fb$pitch_name)`s finish in the top third of the zone; whiff rate there is `r pct(fbh$hw)` vs `r pct(fbh$lw)` in the bottom third (VAA `r fmt(fb$vaa)`°).</li>
-</ul></div>
+```{r charts}
+# Movement: clouds + 68% ellipses, pitch codes at the averages (no legend)
+cen <- pts[!is.na(ivb), .(ivb = mean(ivb), hb = mean(hb_arm), n = .N), by = pitch_type]
+cen[, col := fifelse(n >= MIN_N, col_of(pitch_type), MUTED)]
+qx <- quantile(pts$hb_arm, c(.005, .995), na.rm = TRUE); qy <- quantile(pts$ivb, c(.005, .995), na.rm = TRUE)
+lim_x <- c(min(-5, qx[1] - 2), max(5, qx[2] + 2)); lim_y <- c(min(-5, qy[1] - 2), max(5, qy[2] + 2))
+mv <- ggplot(pts[!is.na(ivb)], aes(hb_arm, ivb, colour = pitch_type)) +
+  geom_hline(yintercept = 0, colour = "#3A5A85", linewidth = .3) + geom_vline(xintercept = 0, colour = "#3A5A85", linewidth = .3) +
+  geom_point(alpha = .4, size = .5, stroke = 0) +
+  stat_ellipse(level = .68, linewidth = .45) +
+  geom_label(data = cen, aes(hb, ivb, label = pitch_type), colour = cen$col, fill = BG, label.size = 0,
+             label.padding = unit(.08, "lines"), family = "JetBrains Mono", fontface = "bold", size = 3) +
+  scale_colour_manual(values = pal, na.value = MUTED) +
+  coord_equal(xlim = lim_x, ylim = lim_y) +
+  labs(x = "Horizontal break, in (arm side →)", y = "Induced vertical break, in") + theme_dj(8)
+fbc <- cen[pitch_type == fb$pitch_type]
+oth <- cen[pitch_type != fb$pitch_type & n >= MIN_N][, `:=`(d = sqrt((ivb - fbc$ivb)^2 + (hb - fbc$hb)^2), di = ivb - fbc$ivb, dh = hb - fbc$hb)][order(-d)]
+co_mv <- if (nrow(oth)) {
+  o <- oth[1]
+  how <- if (abs(o$di) >= abs(o$dh)) sprintf("%s in %s rise", fmt(abs(o$di), 0), ifelse(o$di < 0, "less", "more")) else sprintf("%s in more %s run", fmt(abs(o$dh), 0), ifelse(o$dh > 0, "arm-side", "glove-side"))
+  sprintf("The %s finishes %s in from his %s, with %s.", o$pitch_type, fmt(o$d, 0), fb$pitch_type, how)
+} else ""
+n_mv <- sprintf("n = %s pitches. Ellipses hold about 68%% of each type; codes sit at the averages.%s",
+                format(nrow(pts[!is.na(ivb)]), big.mark = ","),
+                if (any(cen$n < MIN_N)) " Grey codes: under 30 pitches." else "")
 
-<div class="foot">Source: Baseball Savant Statcast search (baseballsavant.mlb.com), MLB regular season pitch-level data, processed with DuckDB SQL + R (xgboost). Independent portfolio sample: not produced by or affiliated with any MLB club. Rates under ~50 swings are noisy; Stuff+ is shape-only and regressed by design.</div>
+# Location by count: small multiples of all pitches, catcher view, zone height scaled per hitter
+lp <- pts[!is.na(plate_z_norm) & !is.na(plate_x)]
+ncnt <- lp[, .N, by = cnt][order(cnt)]
+loc <- ggplot(lp, aes(plate_x, plate_z_norm)) +
+  stat_density_2d(aes(fill = after_stat(level)), geom = "polygon", bins = 7, alpha = .9) +
+  annotate("rect", xmin = -0.83, xmax = 0.83, ymin = 0, ymax = 1, fill = NA, colour = INK, linewidth = .35) +
+  scale_fill_gradient(low = "#16365F", high = "#C5DCEF") +
+  facet_wrap(~cnt, nrow = 2) + coord_fixed(ratio = 1.55, xlim = c(-1.7, 1.7), ylim = c(-0.6, 1.6)) +
+  labs(x = "Plate side, ft (catcher view)", y = "Height in zone (0 = bottom, 1 = top)") + theme_dj(6.5) +
+  theme(panel.spacing = unit(4, "pt"), axis.text = element_text(size = 5))
+zr <- lp[, .(z = mean(iz, na.rm = TRUE), n = .N), by = cnt]
+co_loc <- sprintf("Behind in the count %s of his pitches are in the zone vs %s when ahead.",
+                  pct(zr[cnt == "Behind"]$z), pct(zr[cnt == "Ahead"]$z))
+n_loc <- sprintf("n = %s. Ahead %s · even %s · behind %s · two strikes %s pitches. Box = rule-book zone.",
+                 format(nrow(lp), big.mark = ","), ncnt[cnt == "Ahead"]$N, ncnt[cnt == "Even"]$N, ncnt[cnt == "Behind"]$N, ncnt[cnt == "Two strikes"]$N)
+
+# Put-away: two-strike usage (colour) over overall usage (grey), whiff/swing labelled when 50+ swings
+pw <- merge(two[, .(pitch_type, share, whiff, sw, n2 = n)], ars[, .(pitch_type, usage)], by = "pitch_type", all.y = TRUE)
+pw[is.na(share), `:=`(share = 0, sw = 0L, n2 = 0L)]
+pw[, pitch_type := factor(pitch_type, levels = rev(keep))]
+pw[, lab := sprintf("%s%s", pct(share), fifelse(sw >= MIN_SW, paste0(" · ", pct(whiff), " wh"), ""))]
+pw[, col := fifelse(n2 >= MIN_N, col_of(as.character(pitch_type)), MUTED)]
+put <- ggplot(pw, aes(y = pitch_type)) +
+  geom_col(aes(x = usage), fill = "#2A4466", width = .78) +
+  geom_col(aes(x = share), fill = pw$col, width = .42) +
+  geom_text(aes(x = pmax(share, usage) + .015, label = lab), hjust = 0, colour = INK, size = 2.5, family = "JetBrains Mono") +
+  scale_x_continuous(labels = function(x) paste0(round(100 * x), "%"), limits = c(0, max(pw$share, pw$usage) + .32), expand = c(0, 0)) +
+  labs(x = "Share of pitches", y = NULL) + theme_dj(8) +
+  theme(axis.text.y = element_text(family = "JetBrains Mono", colour = INK, face = "bold"), panel.grid.major.y = element_blank())
+top2 <- two[1]
+co_put <- sprintf("The %s is %s of two-strike pitches vs %s overall.", top2$pitch_type, pct(top2$share), pct(ars[pitch_type == top2$pitch_type]$usage))
+n_put <- paste0("Two-strike n: ", paste(sprintf("%s %d", two$pitch_type, two$n), collapse = ", "),
+                ". Grey bars = overall usage; wh = whiffs per swing (shown with 50+ swings).")
+
+ch_mv <- img(mv, 2.35, 3.1); ch_loc <- img(loc, 3.0, 3.3); ch_put <- img(put, 2.35, 3.1)
+```
+
+```{r tables}
+sw <- function(pt) sprintf('<span class="pitch-swatch" style="background:%s"></span>', col_of(pt))
+td <- function(x) ifelse(x == "–", '<td class="na">–</td>', paste0("<td>", x, "</td>"))
+rows <- vapply(seq_len(nrow(ars)), function(i) with(ars[i], paste0("<tr><td>", sw(pitch_type), esc(label), "</td>",
+  td(n), td(pct(usage)), td(fmt(velo)), td(fmt(ivb)), td(sgn(hb_arm)), td(fmt(vaa)),
+  td(pct(whiff_rate)), td(pct(chase_rate)), td(woba(xwoba_con)), td(sgn(xrv100, 2)),
+  td(ifelse(is.na(stuff_plus), "–", stuff_plus)), "</tr>")), "")
+tab_ars <- paste0('<table class="compact"><thead><tr><th>Pitch</th><th>#</th><th>Use</th><th>Velo</th><th>IVB</th><th>HB</th><th>VAA</th>',
+                  "<th>Whiff</th><th>Chase</th><th>xwOBAcon</th><th>xRV/100</th><th>Stuff+</th></tr></thead><tbody>",
+                  paste(rows, collapse = ""), "</tbody></table>")
+vh <- pts[, .(n = .N, sw = sum(sw), wh = sum(wh), xw = mean(xwoba_con, na.rm = TRUE)), by = .(pitch_type, stand)]
+vh[, use := n / sum(n), by = stand]
+cell <- function(pt, s) { r <- vh[pitch_type == pt & stand == s]
+  if (!nrow(r)) return(paste(rep('<td class="na">–</td>', 4), collapse = ""))
+  paste0(td(r$n), td(pct(r$use)), td(if (r$sw >= MIN_SW) pct(r$wh / r$sw) else "–"), td(if (is.nan(r$xw)) "–" else woba(r$xw))) }
+rows2 <- vapply(keep, function(pt) paste0("<tr><td>", sw(pt), pt, "</td>", cell(pt, "L"), cell(pt, "R"), "</tr>"), "")
+tab_vh <- paste0('<table class="compact"><thead><tr><th>Pitch</th><th>LHH #</th><th>Use</th><th>Whiff</th><th>xwOBAcon</th>',
+                 "<th>RHH #</th><th>Use</th><th>Whiff</th><th>xwOBAcon</th></tr></thead><tbody>", paste(rows2, collapse = ""), "</tbody></table>")
+```
+
+```{r card, results="asis"}
+tcls <- c(Attack = "tag-attack", Avoid = "tag-avoid", Watch = "tag-watch")
+tk_html <- paste(vapply(seq_along(tk), function(i) sprintf(
+  '<article class="takeaway"><div class="top"><span class="num">%d</span><span class="tag %s">%s</span></div><p class="line">%s</p><p class="stat">%s</p><p class="detail">%s</p></article>',
+  i, tcls[[tk[[i]]$tag]], tk[[i]]$tag, esc(tk[[i]]$line), esc(tk[[i]]$stat), esc(tk[[i]]$detail)), ""), collapse = "")
+blk <- function(h, co, ch, nn, cls = "") sprintf('<figure class="chart-block"><h3>%s</h3><p class="chart-callout">%s</p><div class="chart-frame %s">%s</div><figcaption class="n-note">%s</figcaption></figure>', h, esc(co), cls, ch, esc(nn))
+cat(sprintf('<article class="sheet">
+<header class="hdr"><h1>%s</h1><div class="meta-side">%s · %s</div>
+<p class="season"><span class="mono">2026 · %d G (%d GS) · %s pitches</span> · %s – %s</p>
+<p class="disclaimer">Independent portfolio sample by Devin Jenkinson, not affiliated with any club. Every number is computed from public Statcast data.</p></header>
+<section><p class="kicker">Three big takeaways</p><div class="takeaways">%s</div></section>
+<section class="charts-section"><p class="kicker">Charts</p><div class="charts">%s%s%s</div></section>
+<section class="tables"><div class="table-block"><h3>Arsenal</h3><div class="table-slot">%s</div>
+<p class="table-note">IVB / HB in inches (HB + = arm side). VAA in degrees at the front of the plate. xRV/100 = expected run value per 100 pitches, pitcher\'s view, shrunk with a 250-pitch prior. Stuff+ = this project\'s shape-only model (100 = MLB average, 10 = 1 SD).</p></div>
+<div class="table-block"><h3>Vs. batter hand</h3><div class="table-slot">%s</div><p class="table-note">Use = share of pitches to that side. Whiff = whiffs per swing, shown with 50+ swings.</p></div></section>
+<footer class="ftr"><div>Source: Baseball Savant Statcast search (public pitch-level data, 2026 regular season), processed with DuckDB SQL + R (xgboost). Independent portfolio sample, not produced by or affiliated with any MLB club.</div><div class="build">Built %s</div></footer>
+</article>',
+  esc(name), side_word, info$team, info$g, info$starts, format(info$n, big.mark = ","),
+  format(as.Date(info$d0), "%b %d"), format(as.Date(info$d1), "%b %d, %Y"), tk_html,
+  blk("Movement", co_mv, ch_mv, n_mv), blk("Location by count", co_loc, ch_loc, n_loc, "multiples"), blk("Put-away", co_put, ch_put, n_put),
+  tab_ars, tab_vh, format(Sys.Date(), "%d %b %Y")))
+```
 
 ```{r close}
 dbDisconnect(con, shutdown = TRUE)
