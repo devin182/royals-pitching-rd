@@ -1,0 +1,56 @@
+WEBVTT
+
+1
+00:00:00.294 --> 00:00:09.184
+Devin Jenkinson · Pitching R&amp;D Portfolio
+A pitching research and development portfolio built on real 2026 Statcast data, focused on the Kansas City Royals staff.
+
+2
+00:00:11.118 --> 00:00:19.544
+Home
+The front door. It sums up what the project covers and links into every tool, so a coach or analyst can jump straight to what they need.
+
+3
+00:00:21.216 --> 00:00:31.279
+Pitcher Explorer
+Pick any Royals pitcher and see his whole arsenal: movement, release, location and pitch mix by count. It's the fastest way to learn a pitcher before a meeting.
+
+4
+00:00:32.529 --> 00:00:44.368
+Research
+Our Stuff+ model and other studies, each checked on games the model never saw, with sample sizes and 95% intervals. Staff can see how much to trust each finding.
+
+5
+00:00:45.598 --> 00:00:55.893
+Sequencing
+Choose the previous pitch and the count to see how each next pitch type tends to do, compared with a baseline that ignores sequence. The gain is small, and the page says so.
+
+6
+00:00:57.208 --> 00:01:08.594
+Pitch Design Lab
+Change a pitch's velocity, spin and movement and see how our Stuff+ model grades it, with the closest MLB comparables. Changes outside the training data are flagged.
+
+7
+00:01:10.159 --> 00:01:20.907
+Tunnel Viewer
+Watch two of a pitcher's average pitch paths from the hitter's eye, and see where they split relative to the point where the hitter has to commit. It shows tunneling instead of describing it.
+
+8
+00:01:22.176 --> 00:01:32.866
+Series Game Plan
+Pick a Royals starter and an early 2027 opponent. A matchup model turns his real arsenal into a plan for each hitter: what to throw, where, and in which count.
+
+9
+00:01:34.039 --> 00:01:42.802
+Coach Card
+One printable page per pitcher, with three plain takeaways: attack, avoid and watch. It's built for the dugout, not the analyst.
+
+10
+00:01:43.948 --> 00:01:52.583
+Methods &amp; Code
+Every query and model script behind the site, tested in continuous integration, so any number can be traced back and reproduced.
+
+11
+00:01:53.237 --> 00:02:00.037
+Thanks for watching. Site: devin182.github.io/royals-pitching-rd · Code: github.com/devin182/royals-pitching-rd · devin.jenkinson182@gmail.com
+The site, the code and a way to get in touch are on screen.

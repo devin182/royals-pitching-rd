@@ -102,3 +102,4 @@ button.btn{background:transparent;font:inherit;cursor:pointer;min-height:44px}
 .sl.off input[type=range]::-webkit-slider-thumb{background:var(--bad)}
 /* touch-friendly controls on phones/tablets */
 @media (pointer:coarse){.pill button{min-height:40px;padding:8px 14px} label.ctl select{min-height:44px} .btn{min-height:44px}}
+video.tour{display:block;width:100%;max-width:640px;height:auto;aspect-ratio:16/9;margin-top:10px;border:1px solid var(--line);border-radius:12px;background:#071428}
